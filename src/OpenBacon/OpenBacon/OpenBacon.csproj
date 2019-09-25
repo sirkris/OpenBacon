@@ -2,6 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>0.0.0+develop</Version>
+    <Authors>Kris Craig</Authors>
+    <Description>A free &amp; open source, fully-featured mobile app for Reddit. Written in C#/Xamarin.</Description>
+    <Copyright>Copyright (C) 2019 by Kris Craig</Copyright>
+    <PackageLicenseUrl>https://github.com/sirkris/OpenBacon/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/sirkris/OpenBacon</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sirkris/OpenBacon</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageTags>reddit mobile app android ios windows uwp droid iphone web utility http api oauth rest json netstandard xamarin</PackageTags>
+    <AssemblyVersion>0.0.0.1</AssemblyVersion>
+    <FileVersion>0.0.0.1</FileVersion>
+    <PackageReleaseNotes />
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
