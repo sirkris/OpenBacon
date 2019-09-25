@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Reddit;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,9 +11,12 @@ namespace OpenBacon
 {
     public partial class MainPage : ContentPage
     {
-        public MainPage()
+        public RedditAPI Reddit { get; private set; }
+
+        public MainPage(RedditAPI reddit)
         {
             InitializeComponent();
+            Reddit = reddit;
         }
 
         public string GetVersion()

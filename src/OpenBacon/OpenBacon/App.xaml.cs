@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Reddit;
+using System;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
@@ -11,7 +12,7 @@ namespace OpenBacon
         {
             InitializeComponent();
 
-            MainPage = new MainPage();
+            MainPage = new MainPage(new RedditAPI(appId: "lQw4WWsFtTCw4A", refreshToken: "TODO"));
         }
 
         protected override void OnStart()
