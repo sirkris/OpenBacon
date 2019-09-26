@@ -2,14 +2,30 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:OpenBacon"
-             Title="OpenBacon for Reddit"
+             Title=""
              x:Class="OpenBacon.MainPage">
-
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="ToolbarItem_Subreddits" Order="Primary" Text="Initializing...." Clicked="ToolbarItemSubreddits_Clicked" />
+        <ToolbarItem Order="Primary" Text="     " />
+        <ToolbarItem Order="Primary" Clicked="ToolbarItemSearch_Clicked">
+            <ToolbarItem.Icon>
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Search" />
+            </ToolbarItem.Icon>
+        </ToolbarItem>
+        <ToolbarItem Order="Primary" Clicked="ToolbarItemRefresh_Clicked">
+            <ToolbarItem.Icon>
+                    <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Refresh" />
+            </ToolbarItem.Icon>
+        </ToolbarItem>
+        <ToolbarItem x:Name="ToolbarItem_Mail" Order="Primary" Clicked="ToolbarItemMail_Clicked">
+            <ToolbarItem.Icon>
+                    <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Mail" />
+            </ToolbarItem.Icon>
+        </ToolbarItem>
+    </ContentPage.ToolbarItems>
     <StackLayout>
         <!-- Place new controls here -->
-        <Label Text="Welcome to Xamarin.Forms!" 
-           HorizontalOptions="Center"
-           VerticalOptions="CenterAndExpand" />
+        
     </StackLayout>
 
 </ContentPage>

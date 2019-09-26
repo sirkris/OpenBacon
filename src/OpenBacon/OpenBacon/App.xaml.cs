@@ -8,11 +8,15 @@ namespace OpenBacon
 {
     public partial class App : Application
     {
-        public App()
+        public App(MainPage mainPage)
         {
             InitializeComponent();
 
-            MainPage = new MainPage(new RedditAPI(appId: "lQw4WWsFtTCw4A", refreshToken: "TODO"));
+            MainPage = new NavigationPage(mainPage)
+            {
+                BarBackgroundColor = Color.FromHex("#0079D3"),
+                BarTextColor = Color.White
+            };
         }
 
         protected override void OnStart()
