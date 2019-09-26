@@ -6,7 +6,7 @@
              x:Class="OpenBacon.MainPage">
     <ContentPage.ToolbarItems>
         <ToolbarItem x:Name="ToolbarItem_Subreddits" Order="Primary" Text="Initializing...." Clicked="ToolbarItemSubreddits_Clicked" />
-        <ToolbarItem Order="Primary" Text="     " />
+        <ToolbarItem x:Name="ToolbarItem_Spacer" Order="Primary" Text="     " />
         <ToolbarItem Order="Primary" Clicked="ToolbarItemSearch_Clicked">
             <ToolbarItem.Icon>
                 <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Search" />
@@ -23,9 +23,28 @@
             </ToolbarItem.Icon>
         </ToolbarItem>
     </ContentPage.ToolbarItems>
-    <StackLayout>
-        <!-- Place new controls here -->
-        
-    </StackLayout>
+    <ContentPage.Content>
+        <AbsoluteLayout Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+            <StackLayout>
+                <!-- Place new controls here -->
+
+            </StackLayout>
+
+            <ContentView x:Name="Popup_Subreddits" BackgroundColor="WhiteSmoke" Padding="10, 0" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Center" HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" HeightRequest="300" WidthRequest="300" BackgroundColor="White">
+                        <ListView x:Name="ListView_Subreddits" ItemTapped="ListView_Subreddits_ItemTapped">
+                            <ListView.ItemsSource>
+                                <x:Array Type="{x:Type x:String}"></x:Array>
+                            </ListView.ItemsSource>
+                        </ListView>
+                    </StackLayout>
+                </StackLayout>
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="Popup_Subreddits_OutClick" />
+                </ContentView.GestureRecognizers>
+            </ContentView>
+        </AbsoluteLayout>
+    </ContentPage.Content>
 
 </ContentPage>
