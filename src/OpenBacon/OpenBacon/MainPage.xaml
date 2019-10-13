@@ -1,38 +1,59 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:local="clr-namespace:OpenBacon"
-             Title=""
+             xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Name="ContentPage_MainPage"
              x:Class="OpenBacon.MainPage">
+
     <ContentPage.ToolbarItems>
-        <ToolbarItem x:Name="ToolbarItem_Subreddits" Order="Primary" Text="Initializing...." Clicked="ToolbarItemSubreddits_Clicked" />
-        <ToolbarItem x:Name="ToolbarItem_Spacer" Order="Primary" Text="     " />
-        <ToolbarItem Order="Primary" Clicked="ToolbarItemSearch_Clicked">
+        <ToolbarItem x:Name="ToolbarItem_Subreddits" Order="Primary" Priority="10" Text="Initializing...." Clicked="ToolbarItemSubreddits_Clicked" />
+        <ToolbarItem x:Name="ToolbarItem_Spacer" Order="Primary" Priority="20" Text="     " />
+        <ToolbarItem Order="Primary" Priority="30" Clicked="ToolbarItemSearch_Clicked">
             <ToolbarItem.Icon>
-                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Search" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconSearch" />
             </ToolbarItem.Icon>
         </ToolbarItem>
-        <ToolbarItem Order="Primary" Clicked="ToolbarItemRefresh_Clicked">
+        <ToolbarItem x:Name="ToolbarItem_Mail" Order="Primary" Priority="40" Clicked="ToolbarItemMail_Clicked">
             <ToolbarItem.Icon>
-                    <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Refresh" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconMail" />
             </ToolbarItem.Icon>
         </ToolbarItem>
-        <ToolbarItem x:Name="ToolbarItem_Mail" Order="Primary" Clicked="ToolbarItemMail_Clicked">
+        <ToolbarItem Order="Primary" Priority="50" Clicked="ToolbarItemBaconButton_Clicked">
             <ToolbarItem.Icon>
-                    <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBacon_Mail" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconBaconButton" />
             </ToolbarItem.Icon>
         </ToolbarItem>
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <AbsoluteLayout Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
-            <StackLayout>
-                <!-- Place new controls here -->
+            <ScrollView x:FieldModifier="public" x:Name="ScrollView_Main" Orientation="Vertical" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout x:Name="StackLayout_Main">
+                    <!-- Sort bar. -->
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" VerticalOptions="Start" BackgroundColor="LightGray" RowSpacing="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Text="" FontSize="Small" VerticalOptions="End" Margin="2" x:Name="Label_PostsSinceLastRefresh" />
+                            <Button x:Name="ButtonSort" Grid.Column="1" Text="" FontSize="Small" Clicked="ButtonSort_Clicked" />
+                        </Grid>
+                    </Grid>
+                    <!-- Posts list goes here (generated). -->
+                    <StackLayout VerticalOptions="StartAndExpand" x:Name="StackLayout_Posts">
 
-            </StackLayout>
+                    </StackLayout>
+                </StackLayout>
+            </ScrollView>
 
-            <ContentView x:Name="Popup_Subreddits" BackgroundColor="WhiteSmoke" Padding="10, 0" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
-                <StackLayout VerticalOptions="Center" HorizontalOptions="Center">
-                    <StackLayout Orientation="Vertical" HeightRequest="300" WidthRequest="300" BackgroundColor="White">
+            <ContentView x:Name="Popup_Subreddits" BackgroundColor="DimGray" Padding="10, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" HeightRequest="400" WidthRequest="300" BackgroundColor="White">
                         <ListView x:Name="ListView_Subreddits" ItemTapped="ListView_Subreddits_ItemTapped">
                             <ListView.ItemsSource>
                                 <x:Array Type="{x:Type x:String}"></x:Array>
@@ -44,7 +65,24 @@
                     <TapGestureRecognizer Tapped="Popup_Subreddits_OutClick" />
                 </ContentView.GestureRecognizers>
             </ContentView>
+            <ContentView x:Name="Popup_BaconButton" BackgroundColor="DimGray" Padding="10, 0, 0, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="1, 0, .7, .7" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" HeightRequest="600" WidthRequest="300" BackgroundColor="#0079D3">
+                        <ListView x:Name="ListView_BaconButton" ItemTapped="ListView_BaconButton_ItemTapped">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <ImageCell Text="{Binding Name}" Detail="{Binding Detail}" ImageSource="{Binding ImageSrc}" TextColor="White" DetailColor="WhiteSmoke" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackLayout>
+                </StackLayout>
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="Popup_BaconButton_OutClick" />
+                </ContentView.GestureRecognizers>
+            </ContentView>
         </AbsoluteLayout>
     </ContentPage.Content>
 
 </ContentPage>
+    

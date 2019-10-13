@@ -1,9 +1,7 @@
-﻿using Reddit;
-using System;
+﻿using System;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
-[assembly: XamlCompilation(XamlCompilationOptions.Compile)]
 namespace OpenBacon
 {
     public partial class App : Application
