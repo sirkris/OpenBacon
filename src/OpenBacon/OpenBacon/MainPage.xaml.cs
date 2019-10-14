@@ -1,5 +1,6 @@
 ﻿using Reddit;
 using Reddit.Controllers;
+using Reddit.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -63,26 +64,55 @@ namespace OpenBacon
         {
             ListView_BaconButton.ItemsSource = new List<BaconMenuItem>
             {
-                new BaconMenuItem("Refresh", "Refreshes the current view.", "OpenBaconRefresh"),
-                new BaconMenuItem("Search", "Performs a search.", "OpenBaconSearch"),
-                new BaconMenuItem("Open Subreddit", "Loads a subreddit.", "OpenBaconSubreddit")
+                new BaconMenuItem("Refresh", "Refreshes the current view.", "refresh"),
+                new BaconMenuItem("Search", "Performs a search.", "search"),
+                new BaconMenuItem("Open Subreddit", "Loads a subreddit.", "subreddit")
             };
         }
 
         public void LoadSub(string subreddit)
         {
+            if (subreddit.Equals("Front Page"))
+            {
+                subreddit = "";
+            }
+
             Subreddit = Reddit.Subreddit(subreddit);
             ToolbarItem_Subreddits.Text = (!string.IsNullOrWhiteSpace(subreddit)
                 ? (Subreddit.Name.Length <= MaxSubNameLength ? Subreddit.Name : Subreddit.Name.Substring(0, (MaxSubNameLength - 3)) + "...")
                 : "Front Page");
-
+            
             ToolbarItem_Spacer.Text = (Subreddit.Name.Length <= 10 ? "     " : " ");
+            RefreshToolbar();
+            LoadSort();
+        }
+
+        private void LoadSort(string sort, bool update = true)
+        {
+            if (update)
+            {
+                Sort = sort;
+                ButtonSort.Text = Sort;
+            }
+
+            PopulatePosts(forceRefresh: true);
+        }
+
+        private void LoadSort()
+        {
+            LoadSort(Sort, false);
+        }
+
+        public void Refresh()
+        {
             RefreshToolbar();
             PopulatePosts();
         }
 
         private IList<Post> GetPosts()
         {
+            // TODO - Use caching code once Reddit.NET supports setting params (like after and limit) for these.  --Kris
+            return GetPosts(null);
             switch (Sort.ToLower())
             {
                 default:
@@ -107,27 +137,40 @@ namespace OpenBacon
                 default:
                     throw new Exception("Unrecognized sort : " + Sort);
                 case "hot":
-                    return Subreddit.Posts.GetHot(after: after, limit: 25);
+                    return Subreddit.Posts.GetHot(after: after, limit: 10);
                 case "new":
-                    return Subreddit.Posts.GetNew(after: after, limit: 25);
+                    return Subreddit.Posts.GetNew(after: after, limit: 10);
                 case "rising":
-                    return Subreddit.Posts.GetRising(after: after, limit: 25);
+                    return Subreddit.Posts.GetRising(after: after, limit: 10);
                 case "top":
-                    return Subreddit.Posts.GetTop(after: after, limit: 25);
+                    return Subreddit.Posts.GetTop(after: after, limit: 10);
                 case "controversial":
-                    return Subreddit.Posts.GetControversial(after: after, limit: 25);
+                    return Subreddit.Posts.GetControversial(after: after, limit: 10);
             }
         }
 
         private void PopulatePosts(string after = null, bool forceRefresh = false)
         {
             StackLayout_Posts.Children.Clear();
-            foreach (Post post in (string.IsNullOrWhiteSpace(after) && !forceRefresh ? GetPosts() : GetPosts(after)))
+            try
+            {
+                foreach (Post post in (string.IsNullOrWhiteSpace(after) && !forceRefresh ? GetPosts() : GetPosts(after)))
+                {
+                    StackLayout_Posts.Children.Add(new Frame
+                    {
+                        HasShadow = true,
+                        Content = new Grids.Post(Reddit, post, 
+                            showSub: (string.IsNullOrWhiteSpace(Subreddit.Name) || Subreddit.Name.Equals("all", StringComparison.OrdinalIgnoreCase))).Grid,
+                        Padding = 2
+                    });
+                }
+            }
+            catch (RedditForbiddenException)
             {
                 StackLayout_Posts.Children.Add(new Frame
                 {
                     HasShadow = true,
-                    Content = new Grids.Post(Reddit, post).Grid,
+                    Content = new Label { Text = "The requested subreddit does not exist or has been set to private." },
                     Padding = 2
                 });
             }
@@ -158,15 +201,18 @@ namespace OpenBacon
         public void RefreshToolbar()
         {
             // Check for new messages and display the appropriate icon.  --Kris
-            ToolbarItem_Mail.IconImageSource = (Reddit.Account.Messages.Unread.Count.Equals(0) ? "OpenBaconMail" : "OpenBaconMailNewMessages");
+            ToolbarItem_Mail.IconImageSource = (Reddit.Account.Messages.Unread.Count.Equals(0) ? "mail" : "mailnewmessages");
 
             // Populate the subreddits listview with the user's subscriptions.  --Kris
             List<string> subs = new List<string>();
+            subs.Add(null);
             foreach (Subreddit subreddit in Subscriptions)
             {
                 subs.Add(subreddit.Name);
             }
             subs.Sort();
+
+            subs[0] = "Front Page";
 
             ListView_Subreddits.ItemsSource = subs.ToArray();
 
@@ -205,7 +251,7 @@ namespace OpenBacon
         {
             if (!RefreshDisplayed)
             {
-                ToolbarItems.Add(new ToolbarItem("Refresh", "OpenBaconRefresh.png", () =>
+                ToolbarItems.Add(new ToolbarItem("refresh", "refresh.png", () =>
                 {
                     ToolbarItemRefresh_Clicked(this, null);
                 }, ToolbarItemOrder.Primary, 35));
@@ -224,6 +270,7 @@ namespace OpenBacon
         private void ToolbarItemSubreddits_Clicked(object sender, EventArgs e)
         {
             Popup_BaconButton.IsVisible = false;
+            Popup_SubredditEntry.IsVisible = false;
             Popup_Subreddits.IsVisible = !Popup_Subreddits.IsVisible;
         }
 
@@ -234,7 +281,7 @@ namespace OpenBacon
 
         private void ToolbarItemRefresh_Clicked(object sender, EventArgs e)
         {
-            // TODO
+            Refresh();
         }
 
         private void ToolbarItemSearch_Clicked(object sender, EventArgs e)
@@ -244,12 +291,15 @@ namespace OpenBacon
 
         private void ToolbarItemLoadSub_Clicked(object sender, EventArgs e)
         {
-            // TODO
+            Popup_BaconButton.IsVisible = false;
+            Popup_Subreddits.IsVisible = false;
+            Popup_SubredditEntry.IsVisible = !Popup_SubredditEntry.IsVisible;
         }
 
         private void ToolbarItemBaconButton_Clicked(object sender, EventArgs e)
         {
             Popup_Subreddits.IsVisible = false;
+            Popup_SubredditEntry.IsVisible = false;
             Popup_BaconButton.IsVisible = !Popup_BaconButton.IsVisible;
 
             if (Popup_BaconButton.IsVisible)
@@ -267,6 +317,12 @@ namespace OpenBacon
             // TODO
         }
 
+        private void ButtonSubredditGo_Clicked(object sender, EventArgs e)
+        {
+            LoadSub(Entry_Subreddit.Text);
+            Popup_SubredditEntry.IsVisible = false;
+        }
+
         private void ListView_Subreddits_ItemTapped(object sender, ItemTappedEventArgs e)
         {
             LoadSub(((ListView)sender).SelectedItem.ToString());
@@ -276,6 +332,11 @@ namespace OpenBacon
         private void Popup_Subreddits_OutClick(object sender, EventArgs e)
         {
             Popup_Subreddits.IsVisible = false;
+        }
+
+        private void Popup_SubredditEntry_OutClick(object sender, EventArgs e)
+        {
+            Popup_SubredditEntry.IsVisible = false;
         }
 
         private void ListView_BaconButton_ItemTapped(object sender, ItemTappedEventArgs e)

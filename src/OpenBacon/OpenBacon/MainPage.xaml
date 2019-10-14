@@ -12,17 +12,17 @@
         <ToolbarItem x:Name="ToolbarItem_Spacer" Order="Primary" Priority="20" Text="     " />
         <ToolbarItem Order="Primary" Priority="30" Clicked="ToolbarItemSearch_Clicked">
             <ToolbarItem.Icon>
-                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconSearch" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="search" />
             </ToolbarItem.Icon>
         </ToolbarItem>
         <ToolbarItem x:Name="ToolbarItem_Mail" Order="Primary" Priority="40" Clicked="ToolbarItemMail_Clicked">
             <ToolbarItem.Icon>
-                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconMail" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="mail" />
             </ToolbarItem.Icon>
         </ToolbarItem>
         <ToolbarItem Order="Primary" Priority="50" Clicked="ToolbarItemBaconButton_Clicked">
             <ToolbarItem.Icon>
-                <OnPlatform x:TypeArguments="FileImageSource"  Android="OpenBaconBaconButton" />
+                <OnPlatform x:TypeArguments="FileImageSource"  Android="baconbutton" />
             </ToolbarItem.Icon>
         </ToolbarItem>
     </ContentPage.ToolbarItems>
@@ -50,7 +50,34 @@
                     </StackLayout>
                 </StackLayout>
             </ScrollView>
-
+            
+            <!-- Popups.  -->
+            <ContentView x:Name="Popup_SubredditEntry" BackgroundColor="DimGray" Padding="10, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" WidthRequest="400" BackgroundColor="White">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" VerticalOptions="Start" BackgroundColor="LightGray" RowSpacing="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="5*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Label Grid.Column="0" Text="r/" HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+                                <Entry Grid.Column="1" Text="" Placeholder="MySubreddit" x:Name="Entry_Subreddit" VerticalOptions="FillAndExpand" />
+                                <Button Grid.Column="2" Text="Go" BackgroundColor="DarkGreen" TextColor="LawnGreen" 
+                                        FontAttributes="Bold" x:Name="Button_SubredditGo" Clicked="ButtonSubredditGo_Clicked" />
+                            </Grid>
+                        </Grid>
+                    </StackLayout>
+                </StackLayout>
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="Popup_SubredditEntry_OutClick" />
+                </ContentView.GestureRecognizers>
+            </ContentView>
+            
             <ContentView x:Name="Popup_Subreddits" BackgroundColor="DimGray" Padding="10, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
                     <StackLayout Orientation="Vertical" HeightRequest="400" WidthRequest="300" BackgroundColor="White">
@@ -65,6 +92,7 @@
                     <TapGestureRecognizer Tapped="Popup_Subreddits_OutClick" />
                 </ContentView.GestureRecognizers>
             </ContentView>
+            
             <ContentView x:Name="Popup_BaconButton" BackgroundColor="DimGray" Padding="10, 0, 0, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="1, 0, .7, .7" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
                     <StackLayout Orientation="Vertical" HeightRequest="600" WidthRequest="300" BackgroundColor="#0079D3">

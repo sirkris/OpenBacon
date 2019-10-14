@@ -16,7 +16,7 @@ namespace OpenBacon.Grids
     {
         public Grid Grid { get; private set; }
 
-        public Post(RedditAPI reddit, Controllers.Post post, bool loadUser = false)
+        public Post(RedditAPI reddit, Controllers.Post post, bool loadUser = false, bool showSub = false)
         {
             Grid = new Grid { Padding = 0 };
             Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
@@ -57,7 +57,7 @@ namespace OpenBacon.Grids
             authorGrid.Children.Add(
                 new Label
                 {
-                    Text = "submitted " + GetDateTimeSpan(post.Created) + " ago by " + post.Author,
+                    Text = "submitted " + GetDateTimeSpan(post.Created) + " ago" + " by " + post.Author + (showSub ? " to r/" + post.Subreddit : ""),
                     TextColor = Color.FromHex("#888"),
                     FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                     VerticalOptions = LayoutOptions.Start,
@@ -77,7 +77,8 @@ namespace OpenBacon.Grids
                     }, 1, 0);
             }
 
-            if (!string.IsNullOrWhiteSpace(post.Listing.AuthorFlairText))
+            if (!showSub 
+                && !string.IsNullOrWhiteSpace(post.Listing.AuthorFlairText))
             {
                 authorGrid.Children.Add(
                     new Label
@@ -88,24 +89,25 @@ namespace OpenBacon.Grids
                         FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                         VerticalOptions = LayoutOptions.Start,
                         Margin = 0
-                    }, 1, 0);
+                    }, 2, 0);
             }
 
-            Grid.Children.Add(authorGrid, 1, 1);
+            int currentRow = 1;
 
-            int currentRow = 2;
+            Grid.Children.Add(authorGrid, currentRow, 1);
+            currentRow++;
+            
             if (post.Listing.Approved && !string.IsNullOrWhiteSpace(post.Listing.ApprovedBy))
             {
                 Grid.Children.Add(
                     new Label
                     {
-                        Text = "approved by " + post.Listing.ApprovedBy + " at " + post.Listing.ApprovedAtUTC.ToString("g"),
+                        Text = "approved by " + post.Listing.ApprovedBy + " at " + post.Listing.ApprovedAtUTC.ToLocalTime().ToString("g"),
                         TextColor = Color.FromHex("#282"),
                         FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                         VerticalOptions = LayoutOptions.Start,
                         Margin = 0
                     }, 1, currentRow);
-
                 currentRow++;
             }
 
