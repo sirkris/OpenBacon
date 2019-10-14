@@ -92,7 +92,22 @@
                     <TapGestureRecognizer Tapped="Popup_Subreddits_OutClick" />
                 </ContentView.GestureRecognizers>
             </ContentView>
-            
+
+            <ContentView x:Name="Popup_Sort" BackgroundColor="DimGray" Padding="10, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" HeightRequest="300" WidthRequest="300" BackgroundColor="White">
+                        <ListView x:Name="ListView_Sort" ItemTapped="ListView_Sort_ItemTapped">
+                            <ListView.ItemsSource>
+                                <x:Array Type="{x:Type x:String}"></x:Array>
+                            </ListView.ItemsSource>
+                        </ListView>
+                    </StackLayout>
+                </StackLayout>
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="Popup_Sort_OutClick" />
+                </ContentView.GestureRecognizers>
+            </ContentView>
+
             <ContentView x:Name="Popup_BaconButton" BackgroundColor="DimGray" Padding="10, 0, 0, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="1, 0, .7, .7" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
                     <StackLayout Orientation="Vertical" HeightRequest="600" WidthRequest="300" BackgroundColor="#0079D3">

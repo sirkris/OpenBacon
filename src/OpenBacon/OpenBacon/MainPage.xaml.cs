@@ -92,7 +92,7 @@ namespace OpenBacon
             if (update)
             {
                 Sort = sort;
-                ButtonSort.Text = Sort;
+                ButtonSort.Text = "Sort: " + Sort;
             }
 
             PopulatePosts(forceRefresh: true);
@@ -216,6 +216,16 @@ namespace OpenBacon
 
             ListView_Subreddits.ItemsSource = subs.ToArray();
 
+            // Populate the sort listview.  --Kris
+            ListView_Sort.ItemsSource = new string[5]
+            {
+                "Hot",
+                "New",
+                "Rising",
+                "Controversial",
+                "Top"
+            };
+
             // Squeeze in more toolbar items for higher screen resolutions.  --Kris
             AdaptToResolution();
 
@@ -267,10 +277,34 @@ namespace OpenBacon
                 (res.EndsWith(".1") ? "+develop" : res.EndsWith(".2") ? "+beta" : ""));
         }
 
+        private void ClearPopups(string skip = "")
+        {
+            if (string.IsNullOrEmpty(skip))
+            {
+                skip = "";
+            }
+
+            if (!skip.Equals("BaconButton"))
+            {
+                Popup_BaconButton.IsVisible = false;
+            }
+            if (!skip.Equals("SubredditEntry"))
+            {
+                Popup_SubredditEntry.IsVisible = false;
+            }
+            if (!skip.Equals("Subreddits"))
+            {
+                Popup_Subreddits.IsVisible = false;
+            }
+            if (!skip.Equals("Sort"))
+            {
+                Popup_Sort.IsVisible = false;
+            }
+        }
+
         private void ToolbarItemSubreddits_Clicked(object sender, EventArgs e)
         {
-            Popup_BaconButton.IsVisible = false;
-            Popup_SubredditEntry.IsVisible = false;
+            ClearPopups("Subreddits");
             Popup_Subreddits.IsVisible = !Popup_Subreddits.IsVisible;
         }
 
@@ -291,15 +325,13 @@ namespace OpenBacon
 
         private void ToolbarItemLoadSub_Clicked(object sender, EventArgs e)
         {
-            Popup_BaconButton.IsVisible = false;
-            Popup_Subreddits.IsVisible = false;
+            ClearPopups("SubredditEntry");
             Popup_SubredditEntry.IsVisible = !Popup_SubredditEntry.IsVisible;
         }
 
         private void ToolbarItemBaconButton_Clicked(object sender, EventArgs e)
         {
-            Popup_Subreddits.IsVisible = false;
-            Popup_SubredditEntry.IsVisible = false;
+            ClearPopups("BaconButton");
             Popup_BaconButton.IsVisible = !Popup_BaconButton.IsVisible;
 
             if (Popup_BaconButton.IsVisible)
@@ -314,7 +346,8 @@ namespace OpenBacon
 
         private void ButtonSort_Clicked(object sender, EventArgs e)
         {
-            // TODO
+            ClearPopups("Sort");
+            Popup_Sort.IsVisible = !Popup_Sort.IsVisible;
         }
 
         private void ButtonSubredditGo_Clicked(object sender, EventArgs e)
@@ -329,9 +362,20 @@ namespace OpenBacon
             Popup_Subreddits.IsVisible = false;
         }
 
+        private void ListView_Sort_ItemTapped(object sender, ItemTappedEventArgs e)
+        {
+            LoadSort(((ListView)sender).SelectedItem.ToString());
+            Popup_Sort.IsVisible = false;
+        }
+
         private void Popup_Subreddits_OutClick(object sender, EventArgs e)
         {
             Popup_Subreddits.IsVisible = false;
+        }
+
+        private void Popup_Sort_OutClick(object sender, EventArgs e)
+        {
+            Popup_Sort.IsVisible = false;
         }
 
         private void Popup_SubredditEntry_OutClick(object sender, EventArgs e)
