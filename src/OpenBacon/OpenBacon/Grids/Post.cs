@@ -15,14 +15,17 @@ namespace OpenBacon.Grids
     public class Post
     {
         public Grid Grid { get; private set; }
-
-        public Post(RedditAPI reddit, Controllers.Post post, bool loadUser = false, bool showSub = false)
+        
+        public Post(RedditAPI reddit, Controllers.Post post, ref IDictionary<string, Image> upArrows, ref IDictionary<string, Label> scoreLabels, 
+            ref IDictionary<string, Image> downArrows, bool loadUser = false, bool showSub = false, bool showUserFlair = true)
         {
             Grid = new Grid { Padding = 0 };
+
             Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+
             Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(5, GridUnitType.Star) });
-            // TODO - Add the rest of the columns.  --Kris
+            Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(7, GridUnitType.Star) });
 
             Controllers.User user = null;
             if (loadUser
@@ -32,13 +35,65 @@ namespace OpenBacon.Grids
                 user = UsersCache.GetUser(reddit, post.Author, (!string.IsNullOrWhiteSpace(post.Subreddit) ? post.Subreddit : null));
             }
 
+            Grid votingGrid = new Grid { Padding = 0, VerticalOptions = LayoutOptions.StartAndExpand };
+            votingGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            votingGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            votingGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            votingGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+
+            if (!upArrows.ContainsKey(post.Fullname))
+            {
+                upArrows.Add(post.Fullname, new Image
+                {
+                    Source = (!post.Listing.Likes.HasValue || !post.Listing.Likes.Value ? "upvote" : "upvoteselected") + ".png",
+                    VerticalOptions = LayoutOptions.End,
+                    HorizontalOptions = LayoutOptions.Center,
+                    Margin = 2,
+                    StyleId = post.Fullname
+                });
+            }
+            votingGrid.Children.Add(upArrows[post.Fullname], 0, 0);
+
+            if (!scoreLabels.ContainsKey(post.Fullname))
+            {
+                scoreLabels.Add(post.Fullname, new Label
+                {
+                    Text = (post.Score < 1000
+                            ? post.Score.ToString()
+                            : Math.Round(((double)post.Score / 1000), 1).ToString() + "K"),
+                    TextColor = (!post.Listing.Likes.HasValue
+                            ? Color.Black
+                            : (post.Listing.Likes.Value ? Color.FromHex("#FF4500") : Color.FromHex("#7193FF"))),
+                    FontAttributes = FontAttributes.Bold,
+                    VerticalOptions = LayoutOptions.Center,
+                    HorizontalOptions = LayoutOptions.Center,
+                    Margin = 2
+                });
+            }
+            votingGrid.Children.Add(scoreLabels[post.Fullname], 0, 1);
+
+            if (!downArrows.ContainsKey(post.Fullname))
+            {
+                downArrows.Add(post.Fullname, new Image
+                {
+                    Source = (!post.Listing.Likes.HasValue || post.Listing.Likes.Value ? "downvote" : "downvoteselected") + ".png",
+                    VerticalOptions = LayoutOptions.Start,
+                    HorizontalOptions = LayoutOptions.Center,
+                    Margin = 2,
+                    StyleId = post.Fullname
+                });
+            }
+            votingGrid.Children.Add(downArrows[post.Fullname], 0, 2);
+
+            Grid.Children.Add(votingGrid, 0, 1, 0, (post.Listing.Approved && !string.IsNullOrWhiteSpace(post.Listing.ApprovedBy) ? 4 : 3));
+
             Grid.Children.Add(
                 new Image
                 {
                     Source = post.Listing.Thumbnail, 
                     VerticalOptions = LayoutOptions.Start,
                     Margin = 5
-                }, 0, 1, 0, 3);
+                }, 1, 2, 0, (post.Listing.Approved && !string.IsNullOrWhiteSpace(post.Listing.ApprovedBy) ? 4 : 3));
 
             Grid.Children.Add(
                 new Label
@@ -47,7 +102,7 @@ namespace OpenBacon.Grids
                     FontAttributes = FontAttributes.Bold,
                     FontSize = Device.GetNamedSize(NamedSize.Small, typeof(Label)),
                     VerticalOptions = LayoutOptions.Start
-                }, 1, 0);
+                }, 2, 0);
             
             Grid authorGrid = new Grid { Padding = 0 };
             authorGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
@@ -57,7 +112,7 @@ namespace OpenBacon.Grids
             authorGrid.Children.Add(
                 new Label
                 {
-                    Text = "submitted " + GetDateTimeSpan(post.Created) + " ago" + " by " + post.Author + (showSub ? " to r/" + post.Subreddit : ""),
+                    Text = "submitted " + GetDateTimeSpan(post.Created) + " ago" + (showSub ? " to r/" + post.Subreddit : " by " + post.Author),
                     TextColor = Color.FromHex("#888"),
                     FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                     VerticalOptions = LayoutOptions.Start,
@@ -78,6 +133,7 @@ namespace OpenBacon.Grids
             }
 
             if (!showSub 
+                && showUserFlair
                 && !string.IsNullOrWhiteSpace(post.Listing.AuthorFlairText))
             {
                 authorGrid.Children.Add(
@@ -94,7 +150,7 @@ namespace OpenBacon.Grids
 
             int currentRow = 1;
 
-            Grid.Children.Add(authorGrid, currentRow, 1);
+            Grid.Children.Add(authorGrid, 2, currentRow);
             currentRow++;
             
             if (post.Listing.Approved && !string.IsNullOrWhiteSpace(post.Listing.ApprovedBy))
@@ -107,7 +163,7 @@ namespace OpenBacon.Grids
                         FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                         VerticalOptions = LayoutOptions.Start,
                         Margin = 0
-                    }, 1, currentRow);
+                    }, 2, currentRow);
                 currentRow++;
             }
 
@@ -120,7 +176,7 @@ namespace OpenBacon.Grids
                     FontAttributes = FontAttributes.Bold,
                     VerticalOptions = LayoutOptions.End,
                     Margin = 0
-                }, 1, currentRow);
+                }, 2, currentRow);
         }
 
         private string GetDateTimeSpan(DateTime posted)

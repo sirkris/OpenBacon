@@ -1,6 +1,7 @@
 ﻿using Reddit;
 using Reddit.Controllers;
 using Reddit.Exceptions;
+using Reddit.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,6 +22,19 @@ namespace OpenBacon
         public RedditAPI Reddit { get; private set; }
         public Subreddit Subreddit { get; private set; }
         public string Sort { get; private set; } = "Hot";
+
+        private IDictionary<string, Image> UpArrows;
+        private IDictionary<string, Label> ScoreLabels;
+        private IDictionary<string, Image> DownArrows;
+        private IDictionary<string, Frame> Frames;
+
+        private IDictionary<string, TapGestureRecognizer> UpArrowTaps;
+        private IDictionary<string, TapGestureRecognizer> DownArrowTaps;
+        private IDictionary<string, SwipeGestureRecognizer> FrameLeftSwipes;
+        private IDictionary<string, SwipeGestureRecognizer> FrameRightSwipes;
+
+        private IDictionary<string, Frame> BaconMenuFrames;
+        private IDictionary<string, TapGestureRecognizer> BaconMenuTaps;
 
         private int MaxSubNameLength { get; set; } = 15;
         private bool RefreshDisplayed { get; set; } = false;
@@ -46,6 +60,22 @@ namespace OpenBacon
         public MainPage(RedditAPI reddit, string subreddit = "")
         {
             InitializeComponent();
+
+            UpArrows = new Dictionary<string, Image>();
+            ScoreLabels = new Dictionary<string, Label>();
+            DownArrows = new Dictionary<string, Image>();
+
+            UpArrowTaps = new Dictionary<string, TapGestureRecognizer>();
+            DownArrowTaps = new Dictionary<string, TapGestureRecognizer>();
+
+            Frames = new Dictionary<string, Frame>();
+
+            FrameLeftSwipes = new Dictionary<string, SwipeGestureRecognizer>();
+            FrameRightSwipes = new Dictionary<string, SwipeGestureRecognizer>();
+
+            BaconMenuFrames = new Dictionary<string, Frame>();
+            BaconMenuTaps = new Dictionary<string, TapGestureRecognizer>();
+
             Reddit = reddit;
             LoadSub(subreddit);
             PopulateBaconMenu();
@@ -62,12 +92,56 @@ namespace OpenBacon
 
         private void PopulateBaconMenu()
         {
-            ListView_BaconButton.ItemsSource = new List<BaconMenuItem>
+            StackLayout_BaconMenu.Children.Clear();
+
+            BaconMenuFrames.Clear();
+            BaconMenuTaps.Clear();
+
+            // TODO - Use Models.OAuthCredentials to determine if account is linked once Reddit.NET 1.3 is available.  --Kris
+            string username = null;
+            try
             {
+                username = Reddit.Account.Me.Name;
+            }
+            catch (Exception) { }
+
+            IList<BaconMenuItem> baconMenuItems = new List<BaconMenuItem>
+            {
+                // TODO - Use Models.OAuthCredentials to determine if account is linked once Reddit.NET 1.3 is available.  --Kris
+                (!string.IsNullOrEmpty(username) 
+                    ? new BaconMenuItem("Your Profile", "Access u/" + username + "'s profile.", "alien") 
+                    : new BaconMenuItem("Connect Account", "Allow OpenBacon access to your Reddit account.", "alien" )),
                 new BaconMenuItem("Refresh", "Refreshes the current view.", "refresh"),
                 new BaconMenuItem("Search", "Performs a search.", "search"),
                 new BaconMenuItem("Open Subreddit", "Loads a subreddit.", "subreddit")
             };
+
+            foreach (BaconMenuItem baconMenuItem in baconMenuItems)
+            {
+                if (!BaconMenuFrames.ContainsKey(baconMenuItem.Name))
+                {
+                    BaconMenuFrames.Add(baconMenuItem.Name, new Frame
+                    {
+                        HasShadow = false, 
+                        BackgroundColor = Color.FromHex("#0079D3"),
+                        BorderColor = Color.FromHex("#1089E3"),
+                        Content = new Grids.BaconMenuItem(baconMenuItem).Grid,
+                        Padding = 2,
+                        StyleId = baconMenuItem.Name
+                    });
+                }
+
+                // Tap gesture recognizer.  --Kris
+                if (!BaconMenuTaps.ContainsKey(baconMenuItem.Name))
+                {
+                    BaconMenuTaps.Add(baconMenuItem.Name, new TapGestureRecognizer());
+                    BaconMenuTaps[baconMenuItem.Name].Tapped += BaconMenu_FrameTapped;
+                }
+
+                BaconMenuFrames[baconMenuItem.Name].GestureRecognizers.Add(BaconMenuTaps[baconMenuItem.Name]);
+
+                StackLayout_BaconMenu.Children.Add(BaconMenuFrames[baconMenuItem.Name]);
+            }
         }
 
         public void LoadSub(string subreddit)
@@ -152,17 +226,48 @@ namespace OpenBacon
         private void PopulatePosts(string after = null, bool forceRefresh = false)
         {
             StackLayout_Posts.Children.Clear();
+
+            UpArrows.Clear();
+            UpArrowTaps.Clear();
+            DownArrows.Clear();
+            DownArrowTaps.Clear();
+
+            Frames.Clear();
+            FrameLeftSwipes.Clear();
+            FrameRightSwipes.Clear();
+
             try
             {
                 foreach (Post post in (string.IsNullOrWhiteSpace(after) && !forceRefresh ? GetPosts() : GetPosts(after)))
                 {
-                    StackLayout_Posts.Children.Add(new Frame
+                    if (!Frames.ContainsKey(post.Fullname))
                     {
-                        HasShadow = true,
-                        Content = new Grids.Post(Reddit, post, 
-                            showSub: (string.IsNullOrWhiteSpace(Subreddit.Name) || Subreddit.Name.Equals("all", StringComparison.OrdinalIgnoreCase))).Grid,
-                        Padding = 2
-                    });
+                        Frames.Add(post.Fullname, new Frame
+                        {
+                            HasShadow = true,
+                            Content = new Grids.Post(Reddit, post, ref UpArrows, ref ScoreLabels, ref DownArrows, showUserFlair: false, 
+                                showSub: (string.IsNullOrWhiteSpace(Subreddit.Name) || Subreddit.Name.Equals("all", StringComparison.OrdinalIgnoreCase))).Grid,
+                            Padding = 2,
+                            StyleId = post.Fullname
+                        });
+                    }
+
+                    if (!FrameLeftSwipes.ContainsKey(post.Fullname))
+                    {
+                        FrameLeftSwipes.Add(post.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Left });
+                        FrameLeftSwipes[post.Fullname].Swiped += FrameSwiped_Left;
+                    }
+
+                    if (!FrameRightSwipes.ContainsKey(post.Fullname))
+                    {
+                        FrameRightSwipes.Add(post.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Right });
+                        FrameRightSwipes[post.Fullname].Swiped += FrameSwiped_Right;
+                    }
+
+                    Frames[post.Fullname].GestureRecognizers.Add(FrameLeftSwipes[post.Fullname]);
+                    Frames[post.Fullname].GestureRecognizers.Add(FrameRightSwipes[post.Fullname]);
+
+                    StackLayout_Posts.Children.Add(Frames[post.Fullname]);
                 }
             }
             catch (RedditForbiddenException)
@@ -173,6 +278,18 @@ namespace OpenBacon
                     Content = new Label { Text = "The requested subreddit does not exist or has been set to private." },
                     Padding = 2
                 });
+            }
+
+            // Add tap gesture recognizers to upvote and downvote icons.  --Kris
+            foreach (KeyValuePair<string, Image> pair in UpArrows)
+            {
+                UpArrowTaps.Add(pair.Key, new TapGestureRecognizer());
+                UpArrowTaps[pair.Key].Tapped += ImageUpvote_Clicked;
+                pair.Value.GestureRecognizers.Add(UpArrowTaps[pair.Key]);
+
+                DownArrowTaps.Add(pair.Key, new TapGestureRecognizer());
+                DownArrowTaps[pair.Key].Tapped += ImageDownvote_Clicked;
+                DownArrows[pair.Key].GestureRecognizers.Add(DownArrowTaps[pair.Key]);
             }
         }
 
@@ -344,6 +461,66 @@ namespace OpenBacon
             }
         }
 
+        private void FrameSwiped_Right(object sender, EventArgs e)
+        {
+            Upvote(Subreddit.Post(((Frame)sender).StyleId).About());
+        }
+
+        private void ImageUpvote_Clicked(object sender, EventArgs e)
+        {
+            Upvote(Subreddit.Post(((Image)sender).StyleId).About());
+        }
+
+        private void Upvote(Post post)
+        {
+            if (!post.Listing.Likes.HasValue || !post.Listing.Likes.Value)
+            {
+                post.Upvote();
+            }
+            else
+            {
+                post.Unvote();
+            }
+
+            UpdateVotingGrid(post.About());
+        }
+
+        private void FrameSwiped_Left(object sender, EventArgs e)
+        {
+            Downvote(Subreddit.Post(((Frame)sender).StyleId).About());
+        }
+
+        private void ImageDownvote_Clicked(object sender, EventArgs e)
+        {
+            Downvote(Subreddit.Post(((Image)sender).StyleId).About());
+        }
+
+        private void Downvote(Post post)
+        {
+            if (!post.Listing.Likes.HasValue || post.Listing.Likes.Value)
+            {
+                post.Downvote();
+            }
+            else
+            {
+                post.Unvote();
+            }
+
+            UpdateVotingGrid(post.About());
+        }
+
+        private void UpdateVotingGrid(Post post)
+        {
+            UpArrows[post.Fullname].Source = (post.Listing.Likes.HasValue && post.Listing.Likes.Value ? "upvoteselected.png" : "upvote.png");
+            ScoreLabels[post.Fullname].Text = (post.Score < 1000
+                            ? post.Score.ToString()
+                            : Math.Round(((double)post.Score / 1000), 1).ToString() + "K");
+            ScoreLabels[post.Fullname].TextColor = (!post.Listing.Likes.HasValue
+                ? Color.Black
+                : (post.Listing.Likes.Value ? Color.FromHex("#FF4500") : Color.FromHex("#7193FF")));
+            DownArrows[post.Fullname].Source = (post.Listing.Likes.HasValue && !post.Listing.Likes.Value ? "downvoteselected.png" : "downvote.png");
+        }
+
         private void ButtonSort_Clicked(object sender, EventArgs e)
         {
             ClearPopups("Sort");
@@ -383,12 +560,16 @@ namespace OpenBacon
             Popup_SubredditEntry.IsVisible = false;
         }
 
-        private void ListView_BaconButton_ItemTapped(object sender, ItemTappedEventArgs e)
+        private void BaconMenu_FrameTapped(object sender, EventArgs e)
         {
-            switch (((BaconMenuItem)((ListView)sender).SelectedItem).Name)
+            switch (((Frame)sender).StyleId)
             {
                 default:
-                    throw new Exception("Unknown item tapped : " + ((BaconMenuItem)((ListView)sender).SelectedItem).Name);
+                    throw new Exception("Unrecognized menu item : " + ((Frame)sender).StyleId);
+                case "Your Profile":
+                case "Connect Account":
+                    // TODO
+                    break;
                 case "Refresh":
                     ToolbarItemRefresh_Clicked(sender, e);
                     break;
@@ -400,7 +581,6 @@ namespace OpenBacon
                     break;
             }
 
-            ((ListView)sender).SelectedItem = null;
             Popup_BaconButton.IsVisible = false;
         }
 

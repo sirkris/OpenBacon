@@ -44,9 +44,9 @@
                             <Button x:Name="ButtonSort" Grid.Column="1" Text="" FontSize="Small" Clicked="ButtonSort_Clicked" />
                         </Grid>
                     </Grid>
-                    <!-- Posts list goes here (generated). -->
+                    <!-- End sort bar. -->
                     <StackLayout VerticalOptions="StartAndExpand" x:Name="StackLayout_Posts">
-
+                        <!-- Posts list goes here (generated). -->
                     </StackLayout>
                 </StackLayout>
             </ScrollView>
@@ -111,13 +111,9 @@
             <ContentView x:Name="Popup_BaconButton" BackgroundColor="DimGray" Padding="10, 0, 0, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="1, 0, .7, .7" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
                     <StackLayout Orientation="Vertical" HeightRequest="600" WidthRequest="300" BackgroundColor="#0079D3">
-                        <ListView x:Name="ListView_BaconButton" ItemTapped="ListView_BaconButton_ItemTapped">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <ImageCell Text="{Binding Name}" Detail="{Binding Detail}" ImageSource="{Binding ImageSrc}" TextColor="White" DetailColor="WhiteSmoke" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                        <StackLayout VerticalOptions="StartAndExpand" x:Name="StackLayout_BaconMenu" BackgroundColor="#0079D3">
+                            <!-- Bacon Menu items go here (generated). -->
+                        </StackLayout>
                     </StackLayout>
                 </StackLayout>
                 <ContentView.GestureRecognizers>
