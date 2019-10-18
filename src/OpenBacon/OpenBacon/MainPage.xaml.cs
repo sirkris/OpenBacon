@@ -38,6 +38,7 @@ namespace OpenBacon
 
         private int MaxSubNameLength { get; set; } = 15;
         private bool RefreshDisplayed { get; set; } = false;
+        private string After { get; set; } = "";
 
         private TapGestureRecognizer BaconButtonOutClick { get; set; }
         
@@ -223,18 +224,23 @@ namespace OpenBacon
             }
         }
 
-        private void PopulatePosts(string after = null, bool forceRefresh = false)
+        private void PopulatePosts(string after = null, bool forceRefresh = false, bool append = false)
         {
-            StackLayout_Posts.Children.Clear();
+            if (!append)
+            {
+                StackLayout_Posts.Children.Clear();
 
-            UpArrows.Clear();
-            UpArrowTaps.Clear();
-            DownArrows.Clear();
-            DownArrowTaps.Clear();
+                UpArrows.Clear();
+                UpArrowTaps.Clear();
+                DownArrows.Clear();
+                DownArrowTaps.Clear();
 
-            Frames.Clear();
-            FrameLeftSwipes.Clear();
-            FrameRightSwipes.Clear();
+                Frames.Clear();
+                FrameLeftSwipes.Clear();
+                FrameRightSwipes.Clear();
+
+                ScrollView_Main.ScrollToAsync(0, 0, false);
+            }
 
             try
             {
@@ -268,6 +274,8 @@ namespace OpenBacon
                     Frames[post.Fullname].GestureRecognizers.Add(FrameRightSwipes[post.Fullname]);
 
                     StackLayout_Posts.Children.Add(Frames[post.Fullname]);
+
+                    After = post.Fullname;
                 }
             }
             catch (RedditForbiddenException)
@@ -283,13 +291,16 @@ namespace OpenBacon
             // Add tap gesture recognizers to upvote and downvote icons.  --Kris
             foreach (KeyValuePair<string, Image> pair in UpArrows)
             {
-                UpArrowTaps.Add(pair.Key, new TapGestureRecognizer());
-                UpArrowTaps[pair.Key].Tapped += ImageUpvote_Clicked;
-                pair.Value.GestureRecognizers.Add(UpArrowTaps[pair.Key]);
+                if (!UpArrowTaps.ContainsKey(pair.Key))
+                {
+                    UpArrowTaps.Add(pair.Key, new TapGestureRecognizer());
+                    UpArrowTaps[pair.Key].Tapped += ImageUpvote_Clicked;
+                    pair.Value.GestureRecognizers.Add(UpArrowTaps[pair.Key]);
 
-                DownArrowTaps.Add(pair.Key, new TapGestureRecognizer());
-                DownArrowTaps[pair.Key].Tapped += ImageDownvote_Clicked;
-                DownArrows[pair.Key].GestureRecognizers.Add(DownArrowTaps[pair.Key]);
+                    DownArrowTaps.Add(pair.Key, new TapGestureRecognizer());
+                    DownArrowTaps[pair.Key].Tapped += ImageDownvote_Clicked;
+                    DownArrows[pair.Key].GestureRecognizers.Add(DownArrowTaps[pair.Key]);
+                }
             }
         }
 
@@ -475,11 +486,19 @@ namespace OpenBacon
         {
             if (!post.Listing.Likes.HasValue || !post.Listing.Likes.Value)
             {
-                post.Upvote();
+                try
+                {
+                    post.Upvote();
+                }
+                catch (Exception) { }
             }
             else
             {
-                post.Unvote();
+                try
+                {
+                    post.Unvote();
+                }
+                catch (Exception) { }
             }
 
             UpdateVotingGrid(post.About());
@@ -499,11 +518,19 @@ namespace OpenBacon
         {
             if (!post.Listing.Likes.HasValue || post.Listing.Likes.Value)
             {
-                post.Downvote();
+                try
+                {
+                    post.Downvote();
+                }
+                catch (Exception) { }
             }
             else
             {
-                post.Unvote();
+                try
+                {
+                    post.Unvote();
+                }
+                catch (Exception) { }
             }
 
             UpdateVotingGrid(post.About());
@@ -587,6 +614,15 @@ namespace OpenBacon
         private void Popup_BaconButton_OutClick(object sender, EventArgs e)
         {
             Popup_BaconButton.IsVisible = false;
+        }
+
+        private void OnScrolled(object sender, ScrolledEventArgs e)
+        {
+            // User has scrolled to the bottom, so load more posts.  --Kris
+            if (e.ScrollY >= (ScrollView_Main.ContentSize.Height - ScrollView_Main.Height))
+            {
+                PopulatePosts(after: After, append: true);
+            }
         }
     }
 }

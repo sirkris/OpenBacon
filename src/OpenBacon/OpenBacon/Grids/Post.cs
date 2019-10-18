@@ -21,7 +21,10 @@ namespace OpenBacon.Grids
         {
             Grid = new Grid { Padding = 0 };
 
+            Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(2, GridUnitType.Star) });
             Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            //Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            //Grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
 
             Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -101,7 +104,7 @@ namespace OpenBacon.Grids
                     Text = (post.Title.Length <= 150 ? post.Title : post.Title.Substring(0, 147) + "..."),
                     FontAttributes = FontAttributes.Bold,
                     FontSize = Device.GetNamedSize(NamedSize.Small, typeof(Label)),
-                    VerticalOptions = LayoutOptions.Start
+                    VerticalOptions = LayoutOptions.StartAndExpand
                 }, 2, 0);
             
             Grid authorGrid = new Grid { Padding = 0 };
