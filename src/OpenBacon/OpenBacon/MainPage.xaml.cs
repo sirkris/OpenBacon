@@ -1,7 +1,8 @@
 ﻿using Reddit;
 using Reddit.Controllers;
+using ControlStructures = Reddit.Controllers.Structures;
 using Reddit.Exceptions;
-using Reddit.Exceptions;
+using Things = Reddit.Things;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -110,12 +111,79 @@ namespace OpenBacon
             {
                 // TODO - Use Models.OAuthCredentials to determine if account is linked once Reddit.NET 1.3 is available.  --Kris
                 (!string.IsNullOrEmpty(username) 
-                    ? new BaconMenuItem("Your Profile", "Access u/" + username + "'s profile.", "alien") 
-                    : new BaconMenuItem("Connect Account", "Allow OpenBacon access to your Reddit account.", "alien" )),
-                new BaconMenuItem("Refresh", "Refreshes the current view.", "refresh"),
-                new BaconMenuItem("Search", "Performs a search.", "search"),
-                new BaconMenuItem("Open Subreddit", "Loads a subreddit.", "subreddit")
+                    ? new BaconMenuItem("My Profile", "Access u/" + username + "'s profile", "alien") 
+                    : new BaconMenuItem("Connect Account", "Allow OpenBacon access to your Reddit account", "alien" )),
+                new BaconMenuItem("Refresh", "Refresh the current view", "refresh"),
+                new BaconMenuItem("Search", "Perform a search", "search"),
+                new BaconMenuItem("Open Subreddit", "Load a subreddit", "subreddit")
             };
+
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                baconMenuItems.Add(
+                    new BaconMenuItem(
+                        "Mail",
+                        (Reddit.Account.Messages.Unread.Count.Equals(0) 
+                            ? "Check your messages" 
+                            : "You have " + Reddit.Account.Messages.Unread.Count.ToString() + " unread messages"), 
+                        (Reddit.Account.Messages.Unread.Count.Equals(0) ? "mail" : "mailnewmessages")));
+                baconMenuItems.Add(
+                    new BaconMenuItem(
+                        "Modmail",
+                        Reddit.Account.Modmail.Unread.Messages.Count.Equals(0) 
+                            ? "Check your modmail" 
+                            : "You have " + Reddit.Account.Modmail.Unread.Messages.Count.ToString() + " unread messages", 
+                        (Reddit.Account.Modmail.Unread.Messages.Count.Equals(0) ? "modmail" : "modmailnewmessages")));
+            }
+
+            if (!string.IsNullOrWhiteSpace(Subreddit.Name) 
+                && !Subreddit.Name.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                baconMenuItems.Add(
+                    new BaconMenuItem("Subreddit Info", "Details about r/" + Subreddit.Name, "subredditinfo"));
+
+                if (Subreddit.WikiEnabled)
+                {
+                    baconMenuItems.Add(
+                        new BaconMenuItem("Wiki", "The wiki for r/" + Subreddit.Name, "wiki"));
+                }
+
+                if (!Subreddit.SubmissionType.Equals("self"))  // self=Self posts only, link=Link posts only, any=Both allowed
+                {
+                    baconMenuItems.Add(new BaconMenuItem("New Link Post", "Create a new link post", "newlinkpost"));
+                }
+                if (!Subreddit.SubmissionType.Equals("link"))
+                {
+                    baconMenuItems.Add(new BaconMenuItem("New Self Post", "Create a new self post", "newselfpost"));
+                }
+
+                bool isMod = false;
+                foreach (ControlStructures.Moderator moderator in Subreddit.Moderators)
+                {
+                    if (moderator.Name.Equals(username, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMod = true;
+                        break;
+                    }
+                }
+
+                if (isMod)
+                {
+                    baconMenuItems.Add(new BaconMenuItem("Manage Subreddit", "Moderate r/" + Subreddit.Name, "managesubreddit"));
+                }
+            }
+            else
+            {
+                baconMenuItems.Add(
+                    new BaconMenuItem("Wiki", "Load the Reddit wiki", "wiki"));
+            }
+
+            if (!string.IsNullOrEmpty(username))
+            {
+                baconMenuItems.Add(new BaconMenuItem("New Subreddit", "Create a new subreddit of your very own", "newsubreddit"));
+            }
+
+            baconMenuItems.Add(new BaconMenuItem("About OpenBacon", "Information about this app", "logo"));
 
             foreach (BaconMenuItem baconMenuItem in baconMenuItems)
             {
@@ -152,7 +220,16 @@ namespace OpenBacon
                 subreddit = "";
             }
 
-            Subreddit = Reddit.Subreddit(subreddit);
+            if (string.IsNullOrWhiteSpace(subreddit)
+                || subreddit.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                Subreddit = Reddit.Subreddit(subreddit);
+            }
+            else
+            {
+                Subreddit = Reddit.Subreddit(subreddit).About();
+            }
+            
             ToolbarItem_Subreddits.Text = (!string.IsNullOrWhiteSpace(subreddit)
                 ? (Subreddit.Name.Length <= MaxSubNameLength ? Subreddit.Name : Subreddit.Name.Substring(0, (MaxSubNameLength - 3)) + "...")
                 : "Front Page");
@@ -326,10 +403,35 @@ namespace OpenBacon
             return res;
         }
 
-        public void RefreshToolbar()
+        private void SetMailIcon()
         {
             // Check for new messages and display the appropriate icon.  --Kris
             ToolbarItem_Mail.IconImageSource = (Reddit.Account.Messages.Unread.Count.Equals(0) ? "mail" : "mailnewmessages");
+        }
+
+        public void RefreshToolbar()
+        {
+            // Whether to show modmail icon and where.  --Kris
+            // TODO - Update Reddit.NET to support this solution:  
+            // https://www.reddit.com/r/redditdev/comments/djlf73/why_doesnt_the_api_expose_the_new_modmail_behavior/f489pca/
+            if (Reddit.Account.Modmail.Unread.Messages.Count > 0)
+            {
+                if (Reddit.Account.Messages.Unread.Count.Equals(0))
+                {
+                    ToolbarItem_Search.IconImageSource = "search";
+                    ToolbarItem_Mail.IconImageSource = "modmailnewmessages";
+                }
+                else
+                {
+                    ToolbarItem_Search.IconImageSource = "modmailnewmessages";
+                    SetMailIcon();
+                }
+            }
+            else
+            {
+                ToolbarItem_Search.IconImageSource = "search";
+                SetMailIcon();
+            }
 
             // Populate the subreddits listview with the user's subscriptions.  --Kris
             List<string> subs = new List<string>();
@@ -392,7 +494,7 @@ namespace OpenBacon
                 ToolbarItems.Add(new ToolbarItem("refresh", "refresh.png", () =>
                 {
                     ToolbarItemRefresh_Clicked(this, null);
-                }, ToolbarItemOrder.Primary, 35));
+                }, ToolbarItemOrder.Primary, 30));
 
                 RefreshDisplayed = true;
             }
@@ -593,7 +695,7 @@ namespace OpenBacon
             {
                 default:
                     throw new Exception("Unrecognized menu item : " + ((Frame)sender).StyleId);
-                case "Your Profile":
+                case "My Profile":
                 case "Connect Account":
                     // TODO
                     break;
@@ -605,6 +707,27 @@ namespace OpenBacon
                     break;
                 case "Open Subreddit":
                     ToolbarItemLoadSub_Clicked(sender, e);
+                    break;
+                case "Wiki":
+                    // TODO
+                    break;
+                case "Subreddit Info":
+                    // TODO
+                    break;
+                case "New Link Post":
+                    // TODO
+                    break;
+                case "New Self Post":
+                    // TODO
+                    break;
+                case "Manage Subreddit":
+                    // TODO
+                    break;
+                case "New Subreddit":
+                    // TODO
+                    break;
+                case "About OpenBacon":
+                    // TODO
                     break;
             }
 
