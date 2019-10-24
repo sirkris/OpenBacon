@@ -31,6 +31,7 @@ namespace OpenBacon
 
         private IDictionary<string, TapGestureRecognizer> UpArrowTaps;
         private IDictionary<string, TapGestureRecognizer> DownArrowTaps;
+        private IDictionary<string, TapGestureRecognizer> FrameTaps;
         private IDictionary<string, SwipeGestureRecognizer> FrameLeftSwipes;
         private IDictionary<string, SwipeGestureRecognizer> FrameRightSwipes;
 
@@ -72,6 +73,7 @@ namespace OpenBacon
 
             Frames = new Dictionary<string, Frame>();
 
+            FrameTaps = new Dictionary<string, TapGestureRecognizer>();
             FrameLeftSwipes = new Dictionary<string, SwipeGestureRecognizer>();
             FrameRightSwipes = new Dictionary<string, SwipeGestureRecognizer>();
 
@@ -123,16 +125,22 @@ namespace OpenBacon
                 baconMenuItems.Add(
                     new BaconMenuItem(
                         "Mail",
-                        (Reddit.Account.Messages.Unread.Count.Equals(0) 
+                        (Reddit.Account.Messages.GetMessagesUnread(limit: 100).Count.Equals(0) 
                             ? "Check your messages" 
-                            : "You have " + Reddit.Account.Messages.Unread.Count.ToString() + " unread messages"), 
+                            : "You have " + (Reddit.Account.Messages.Unread.Count.Equals(100) 
+                                    ? "99+" 
+                                    : Reddit.Account.Messages.Unread.Count.ToString())
+                                + " unread messages"), 
                         (Reddit.Account.Messages.Unread.Count.Equals(0) ? "mail" : "mailnewmessages")));
                 baconMenuItems.Add(
                     new BaconMenuItem(
                         "Modmail",
-                        Reddit.Account.Modmail.Unread.Messages.Count.Equals(0) 
+                        (Reddit.Account.Modmail.GetUnreadConversations(limit: 100).Messages.Count.Equals(0) 
                             ? "Check your modmail" 
-                            : "You have " + Reddit.Account.Modmail.Unread.Messages.Count.ToString() + " unread messages", 
+                            : "You have " + (Reddit.Account.Modmail.Unread.Messages.Count.Equals(100) 
+                                    ? "99+" 
+                                    : Reddit.Account.Modmail.Unread.Messages.Count.ToString())
+                                + " unread messages"), 
                         (Reddit.Account.Modmail.Unread.Messages.Count.Equals(0) ? "modmail" : "modmailnewmessages")));
             }
 
@@ -313,6 +321,7 @@ namespace OpenBacon
                 DownArrowTaps.Clear();
 
                 Frames.Clear();
+                FrameTaps.Clear();
                 FrameLeftSwipes.Clear();
                 FrameRightSwipes.Clear();
 
@@ -335,6 +344,12 @@ namespace OpenBacon
                         });
                     }
 
+                    if (!FrameTaps.ContainsKey(post.Fullname))
+                    {
+                        FrameTaps.Add(post.Fullname, new TapGestureRecognizer());
+                        FrameTaps[post.Fullname].Tapped += Frame_Clicked;
+                    }
+
                     if (!FrameLeftSwipes.ContainsKey(post.Fullname))
                     {
                         FrameLeftSwipes.Add(post.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Left });
@@ -347,6 +362,7 @@ namespace OpenBacon
                         FrameRightSwipes[post.Fullname].Swiped += FrameSwiped_Right;
                     }
 
+                    Frames[post.Fullname].GestureRecognizers.Add(FrameTaps[post.Fullname]);
                     Frames[post.Fullname].GestureRecognizers.Add(FrameLeftSwipes[post.Fullname]);
                     Frames[post.Fullname].GestureRecognizers.Add(FrameRightSwipes[post.Fullname]);
 
@@ -606,6 +622,11 @@ namespace OpenBacon
             UpdateVotingGrid(post.About());
         }
 
+        private void Frame_Clicked(object sender, EventArgs e)
+        {
+            Navigation.PushAsync(new PostPage(Reddit, Subreddit, Subreddit.Post(((Frame)sender).StyleId)));
+        }
+
         private void FrameSwiped_Left(object sender, EventArgs e)
         {
             Downvote(Subreddit.Post(((Frame)sender).StyleId).About());
@@ -742,7 +763,7 @@ namespace OpenBacon
         private void OnScrolled(object sender, ScrolledEventArgs e)
         {
             // User has scrolled to the bottom, so load more posts.  --Kris
-            if (e.ScrollY >= (ScrollView_Main.ContentSize.Height - ScrollView_Main.Height))
+            if (e.ScrollY >= (ScrollView_Main.ContentSize.Height - ScrollView_Main.Height - 10))
             {
                 PopulatePosts(after: After, append: true);
             }

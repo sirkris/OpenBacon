@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             xmlns:local="clr-namespace:OpenBacon;assembly=OpenBacon" 
+             x:Class="OpenBacon.PostPage">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="ToolbarItem_Score" Order="Primary" Priority="10" Text="Initializing...." />
+        <ToolbarItem Order="Primary" Priority="20" x:Name="ToolbarItem_Upvote" Clicked="ToolbarItemUpvote_Clicked">
+            <ToolbarItem.Icon>
+                <OnPlatform x:TypeArguments="FileImageSource" Android="upvote" />
+            </ToolbarItem.Icon>
+        </ToolbarItem>
+        <ToolbarItem Order="Primary" Priority="30" x:Name="ToolbarItem_Downvote" Clicked="ToolbarItemDownvote_Clicked">
+            <ToolbarItem.Icon>
+                <OnPlatform x:TypeArguments="FileImageSource" Android="downvote" />
+            </ToolbarItem.Icon>
+        </ToolbarItem>
+        <ToolbarItem Order="Primary" Priority="40" Text="Comments"  Clicked="ToolbarItemComments_Clicked"/>
+        <ToolbarItem Order="Secondary" Priority="41" Text="New Comment..." />
+        <ToolbarItem Order="Secondary" Priority="42" Text="Scroll to Comments" />
+    </ContentPage.ToolbarItems>
+    <ContentPage.Content>
+        <AbsoluteLayout Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+            <ScrollView x:FieldModifier="public" x:Name="ScrollView_Post" Orientation="Vertical" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout>
+                    <Frame HasShadow="True" Padding="2">
+                        <Label x:Name="Label_Title" Text="" FontSize="Medium" FontAttributes="Bold" VerticalOptions="StartAndExpand" />
+                    </Frame>
+                    <Frame OutlineColor="White" HasShadow="True" Padding="2">
+                        <StackLayout x:Name="StackLayout_Preview">
+                            <local:ScrollableWebView x:Name="WebView_Preview" Source="" VerticalOptions="StartAndExpand" HeightRequest="300" />
+                        </StackLayout>
+                    </Frame>
+                </StackLayout>
+            </ScrollView>
+        </AbsoluteLayout>
+    </ContentPage.Content>
+</ContentPage>
