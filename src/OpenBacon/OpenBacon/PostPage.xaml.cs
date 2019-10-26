@@ -96,10 +96,120 @@ namespace OpenBacon
 
         private void RefreshPage()
         {
+            // Title
+            if (!string.IsNullOrWhiteSpace(Post.Listing.LinkFlairText))
+            {
+                Label_PostFlair.Text = Post.Listing.LinkFlairText;
+            }
+
             Label_Title.Text = Post.Title;
+
+            // Metadata
+            Grid metaGrid = new Grid { Padding = 0, RowSpacing = 0, ColumnSpacing = 0, Margin = 0 };
+            metaGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            metaGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+            metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+
+            metaGrid.Children.Add(
+                new Label
+                {
+                    Text = "submitted at " + Post.Created.ToLocalTime().ToString("g") + " (" + Common.GetDateTimeSpan(Post.Created) + " ago)",
+                    TextColor = Color.FromHex("#888"),
+                    FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                    VerticalOptions = LayoutOptions.Start,
+                    Margin = 0
+                }, 0, 0);
+
+            metaGrid.Children.Add(
+                new Label
+                {
+                    Text = " to r/" + Post.Subreddit,
+                    TextColor = Color.FromHex("#888"),
+                    FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                    VerticalOptions = LayoutOptions.Start,
+                    Margin = 0
+                }, 0, 1);
+
+
+            if (!string.IsNullOrWhiteSpace(Post.Listing.AuthorFlairText))
+            {
+                Grid authorGrid = new Grid { Padding = 0, RowSpacing = 0, ColumnSpacing = 2, Margin = 0 };
+                authorGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+                authorGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+                authorGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+
+                authorGrid.Children.Add(
+                    new Label
+                    {
+                        Text = " by " + Post.Author,
+                        TextColor = Color.FromHex("#888"),
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                        VerticalOptions = LayoutOptions.Start,
+                        Margin = 0
+                    }, 0, 0);
+
+                authorGrid.Children.Add(
+                    new Label
+                    {
+                        Text = Post.Listing.AuthorFlairText,
+                        TextColor = Color.FromHex("#555"),
+                        BackgroundColor = Color.FromHex("#F5F5F5"),
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                        VerticalOptions = LayoutOptions.Start,
+                        Margin = 0
+                    }, 1, 0);
+
+                metaGrid.Children.Add(authorGrid, 0, 2);
+            }
+            else
+            {
+                metaGrid.Children.Add(
+                    new Label
+                    {
+                        Text = " by " + Post.Author,
+                        TextColor = Color.FromHex("#888"),
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                        VerticalOptions = LayoutOptions.Start,
+                        Margin = 0
+                    }, 0, 2);
+            }
+
+            if (!string.IsNullOrWhiteSpace(Post.Listing.Domain) 
+                || !Post.Listing.IsSelf)
+            {
+                LinkPost linkPost = null;
+                if (!Post.Listing.IsSelf)
+                {
+                    linkPost = new LinkPost(Reddit.Models, Post.Listing);
+                }
+                
+                metaGrid.Children.Add(
+                    new Label
+                    {
+                        Text = (!Post.Listing.IsSelf 
+                                ? "URL: " + (linkPost.URL.Length >= 60 ? linkPost.URL.Substring(0, 57) + "..." : linkPost.URL) + " "
+                                : "") 
+                            + (!string.IsNullOrWhiteSpace(Post.Listing.Domain) 
+                                ? "(" + Post.Listing.Domain + ")" 
+                                : ""),
+                        TextColor = Color.FromHex("#888"),
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                        VerticalOptions = LayoutOptions.Start,
+                        Margin = 0
+                    }, 0, 3);
+            }
+
+            StackLayout_MetaData.Children.Add(metaGrid);
+
+            // Preview
             if (Post.Listing.IsSelf)
             {
-                WebView_Preview.Source = new HtmlWebViewSource { Html = (new SelfPost(Reddit.Models, Post.Listing)).SelfTextHTML };
+                WebView_Preview.Source = new HtmlWebViewSource
+                {
+                    Html = "<div style=\"font-family: Verdana; color: #222; background-color: #FAFAFA; font-size: 1em;\">"
+                        + (new SelfPost(Reddit.Models, Post.Listing)).SelfTextHTML
+                        + "</div>"
+                };
             }
             else
             {

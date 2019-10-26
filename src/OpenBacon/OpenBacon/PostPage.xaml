@@ -27,7 +27,22 @@
             <ScrollView x:FieldModifier="public" x:Name="ScrollView_Post" Orientation="Vertical" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout>
                     <Frame HasShadow="True" Padding="2">
-                        <Label x:Name="Label_Title" Text="" FontSize="Medium" FontAttributes="Bold" VerticalOptions="StartAndExpand" />
+                        <Grid ColumnSpacing="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label x:Name="Label_PostFlair" Grid.Row="0" Grid.Column="0" Text="" TextColor="#555" BackgroundColor="#F5F5F5" 
+                                   FontSize="Micro" VerticalOptions="Start" Margin="0" />
+                            <Label Grid.Row="0" Grid.Column="1" x:Name="Label_Title" Text="" 
+                                   FontSize="Medium" FontAttributes="Bold" VerticalOptions="StartAndExpand" />
+                        </Grid>
+                    </Frame>
+                    <Frame HasShadow="True" Padding="2">
+                        <StackLayout x:Name="StackLayout_MetaData" />
                     </Frame>
                     <Frame OutlineColor="White" HasShadow="True" Padding="2">
                         <StackLayout x:Name="StackLayout_Preview">

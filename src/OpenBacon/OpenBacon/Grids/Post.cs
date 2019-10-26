@@ -74,7 +74,8 @@ namespace OpenBacon.Grids
                 FontAttributes = FontAttributes.Bold,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalOptions = LayoutOptions.Center,
-                Margin = 2
+                Margin = 2, 
+                FontSize = (post.Score < 100000 ? Device.GetNamedSize(NamedSize.Default, typeof(Label)) : Device.GetNamedSize(NamedSize.Micro, typeof(Label)))
             });
 
             votingGrid.Children.Add(scoreLabels[post.Fullname], 0, 1);
@@ -121,7 +122,7 @@ namespace OpenBacon.Grids
             authorGrid.Children.Add(
                 new Label
                 {
-                    Text = "submitted " + GetDateTimeSpan(post.Created) + " ago" + (showSub ? " to r/" + post.Subreddit : " by " + post.Author),
+                    Text = "submitted " + Common.GetDateTimeSpan(post.Created) + " ago" + (showSub ? " to r/" + post.Subreddit : " by " + post.Author),
                     TextColor = Color.FromHex("#888"),
                     FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                     VerticalOptions = LayoutOptions.Start,
@@ -188,27 +189,5 @@ namespace OpenBacon.Grids
                 }, 2, currentRow);
         }
 
-        private string GetDateTimeSpan(DateTime posted)
-        {
-            if (posted.AddMinutes(5) > DateTime.UtcNow)
-            {
-                return "moments";
-            }
-            else if (posted.AddHours(1) > DateTime.UtcNow)
-            {
-                int diff = ((int)(DateTime.UtcNow - posted).TotalMinutes);
-                return diff.ToString() + " minute" + (!diff.Equals(1) ? "s" : "");
-            }
-            else if (posted.AddDays(1) > DateTime.UtcNow)
-            {
-                int diff = ((int)(DateTime.UtcNow - posted).TotalHours);
-                return diff.ToString() + " hour" + (!diff.Equals(1) ? "s" : "");
-            }
-            else
-            {
-                int diff = ((int)(DateTime.UtcNow - posted).TotalDays);
-                return diff.ToString() + " day" + (!diff.Equals(1) ? "s" : "");
-            }
-        }
     }
 }

@@ -91,7 +91,7 @@ namespace OpenBacon
 
         private void UpdateSortButton()
         {
-            ButtonSort.Text = "Sort: " + Sort;
+            ButtonSort.Text = Sort;
         }
 
         private void PopulateBaconMenu()
@@ -252,7 +252,11 @@ namespace OpenBacon
             if (update)
             {
                 Sort = sort;
-                ButtonSort.Text = "Sort: " + Sort;
+                ButtonSort.Text = Sort;
+
+                ButtonSort.FontSize = (sort.Equals("Controversial", StringComparison.OrdinalIgnoreCase)
+                    ? Device.GetNamedSize(NamedSize.Micro, typeof(Button))
+                    : Device.GetNamedSize(NamedSize.Small, typeof(Button)));
             }
 
             PopulatePosts(forceRefresh: true);
@@ -494,12 +498,12 @@ namespace OpenBacon
             else if (DeviceDisplay.MainDisplayInfo.Width >= 1080)
             {
                 AddRefreshToToolbar();
-                MaxSubNameLength = 18;
+                MaxSubNameLength = 15;
             }
             else if (DeviceDisplay.MainDisplayInfo.Width >= 720)
             {
                 AddRefreshToToolbar();
-                MaxSubNameLength = 14;
+                MaxSubNameLength = 10;
             }
         }
 
