@@ -20,6 +20,8 @@ namespace OpenBacon
 
         public string Sort { get; private set; } = "Top";
 
+        private IDictionary<string, int> CommentIndexes { get; set; }
+
         public PostPage(RedditAPI reddit, Subreddit subreddit, Post post)
         {
             InitializeComponent();
@@ -108,6 +110,7 @@ namespace OpenBacon
             if (!append)
             {
                 StackLayout_Comments.Children.Clear();
+                ReapplyIndexes();
             }
 
             foreach (Comment comment in GetComments())
@@ -118,8 +121,13 @@ namespace OpenBacon
 
         private void PopulateCommentTree(Comment comment, bool recurse = true, int depth = 0)
         {
-            // TODO - Display comment and indent as needed.  --Kris
+            if (!CommentIndexes.ContainsKey(comment.Fullname))
+            {
+                CommentIndexes.Add(comment.Fullname, StackLayout_Comments.Children.Count);
+            }
 
+            // TODO - Display comment and indent as needed.  --Kris
+            
             // Load any child comments or display link to load more.  --Kris
             if (recurse)
             {
@@ -131,6 +139,19 @@ namespace OpenBacon
             else if (!GetComments(comment).Count.Equals(0))
             {
                 // TODO - Display load more comments link.  --Kris
+            }
+        }
+
+        // Call this whenever comments are inserted into the StackLayout so that the indexes remain accurate.  --Kris
+        private void ReapplyIndexes()
+        {
+            CommentIndexes = new Dictionary<string, int>();
+            for (int i = 0; i < StackLayout_Comments.Children.Count; i++)
+            {
+                if (!CommentIndexes.ContainsKey(StackLayout_Comments.Children[i].StyleId))
+                {
+                    CommentIndexes.Add(StackLayout_Comments.Children[i].StyleId, i);
+                }
             }
         }
 
