@@ -18,9 +18,9 @@
                 <OnPlatform x:TypeArguments="FileImageSource" Android="downvote" />
             </ToolbarItem.Icon>
         </ToolbarItem>
-        <ToolbarItem Order="Primary" Priority="40" Text="Comments"  Clicked="ToolbarItemComments_Clicked"/>
-        <ToolbarItem Order="Secondary" Priority="41" Text="New Comment..." />
-        <ToolbarItem Order="Secondary" Priority="42" Text="Scroll to Comments" />
+        <ToolbarItem Order="Primary" Priority="40" Text="Comments" Clicked="ToolbarItemComments_Clicked" />
+        <ToolbarItem Order="Secondary" Priority="41" Text="New Comment..." Clicked="ToolbarItemNewComment_Clicked" />
+        <ToolbarItem Order="Secondary" Priority="42" Text="Scroll to Comments" Clicked="ToolbarItemComments_Clicked" />
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <AbsoluteLayout Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
@@ -49,8 +49,46 @@
                             <local:ScrollableWebView x:Name="WebView_Preview" Source="" VerticalOptions="StartAndExpand" HeightRequest="300" />
                         </StackLayout>
                     </Frame>
+                    <Frame HasShadow="True" Padding="2" x:Name="Frame_Comments">
+                        <StackLayout>
+                            <!-- Sort bar. -->
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" VerticalOptions="Start" BackgroundColor="LightGray" RowSpacing="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label Grid.Column="0" Text="" FontSize="Small" VerticalOptions="End" Margin="2" x:Name="Label_CommentsSinceLastRefresh" />
+                                    <Button x:Name="ButtonSort" Grid.Column="1" Text="" FontSize="Small" Clicked="ButtonSort_Clicked" />
+                                </Grid>
+                            </Grid>
+                            <!-- End sort bar. -->
+                            <StackLayout VerticalOptions="StartAndExpand" x:Name="StackLayout_Comments">
+                                <!-- Comments list goes here (generated). -->
+                            </StackLayout>
+                        </StackLayout>
+                    </Frame>
                 </StackLayout>
             </ScrollView>
+
+            <!-- Popups.  -->
+            <ContentView x:Name="Popup_Sort" BackgroundColor="DimGray" Padding="10, 10" IsVisible="False" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+                <StackLayout VerticalOptions="Start"  HorizontalOptions="Center">
+                    <StackLayout Orientation="Vertical" HeightRequest="300" WidthRequest="300" BackgroundColor="White">
+                        <ListView x:Name="ListView_Sort" ItemTapped="ListView_Sort_ItemTapped">
+                            <ListView.ItemsSource>
+                                <x:Array Type="{x:Type x:String}"></x:Array>
+                            </ListView.ItemsSource>
+                        </ListView>
+                    </StackLayout>
+                </StackLayout>
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="Popup_Sort_OutClick" />
+                </ContentView.GestureRecognizers>
+            </ContentView>
         </AbsoluteLayout>
     </ContentPage.Content>
 </ContentPage>

@@ -18,6 +18,8 @@ namespace OpenBacon
         private Subreddit Subreddit { get; set; }
         private Post Post { get; set; }
 
+        public string Sort { get; private set; } = "Top";
+
         public PostPage(RedditAPI reddit, Subreddit subreddit, Post post)
         {
             InitializeComponent();
@@ -48,6 +50,88 @@ namespace OpenBacon
             
             ToolbarItem_Upvote.IconImageSource = (Post.Listing.Likes.HasValue && Post.Listing.Likes.Value ? "upvoteselected" : "upvote");
             ToolbarItem_Downvote.IconImageSource = (Post.Listing.Likes.HasValue && !Post.Listing.Likes.Value ? "downvoteselected" : "downvote");
+
+            // Populate the sort listview.  --Kris
+            ListView_Sort.ItemsSource = new string[5]
+            {
+                "Top",
+                "New",
+                "Controversial",
+                "Old",
+                "Q&A"
+            };
+
+            LoadSort(true);
+        }
+
+        private void LoadSort(string sort, bool update = true)
+        {
+            if (update)
+            {
+                Sort = (!sort.Equals("Q&A", StringComparison.OrdinalIgnoreCase ) ? "qa" : Sort);
+                ButtonSort.Text = sort;
+
+                ButtonSort.FontSize = (sort.Equals("Controversial", StringComparison.OrdinalIgnoreCase)
+                    ? Device.GetNamedSize(NamedSize.Micro, typeof(Button))
+                    : Device.GetNamedSize(NamedSize.Small, typeof(Button)));
+            }
+
+            PopulateComments(forceRefresh: true);
+        }
+
+        private void LoadSort(bool update = false)
+        {
+            LoadSort(Sort, update);
+        }
+
+        private List<Comment> GetComments(Comment parent = null)
+        {
+            switch (Sort.ToLower())
+            {
+                default:
+                    throw new Exception("Unrecognized sort : " + Sort);
+                case "top":
+                    return (parent == null ? Post.Comments.Top : parent.Comments.Top);
+                case "new":
+                    return (parent == null ? Post.Comments.Top : parent.Comments.New);
+                case "controversial":
+                    return (parent == null ? Post.Comments.Top : parent.Comments.Controversial);
+                case "old":
+                    return (parent == null ? Post.Comments.Top : parent.Comments.Old);
+                case "qa":
+                    return (parent == null ? Post.Comments.Top : parent.Comments.QA);
+            }
+        }
+
+        private void PopulateComments(bool append = false)
+        {
+            if (!append)
+            {
+                StackLayout_Comments.Children.Clear();
+            }
+
+            foreach (Comment comment in GetComments())
+            {
+                PopulateCommentTree(comment);
+            }
+        }
+
+        private void PopulateCommentTree(Comment comment, bool recurse = true, int depth = 0)
+        {
+            // TODO - Display comment and indent as needed.  --Kris
+
+            // Load any child comments or display link to load more.  --Kris
+            if (recurse)
+            {
+                foreach (Comment reply in GetComments(comment))
+                {
+                    PopulateCommentTree(reply, false, (depth + 1));
+                }
+            }
+            else if (!GetComments(comment).Count.Equals(0))
+            {
+                // TODO - Display load more comments link.  --Kris
+            }
         }
 
         private void Upvote()
@@ -253,6 +337,19 @@ namespace OpenBacon
             }
         }
 
+        private void ClearPopups(string skip = "")
+        {
+            if (string.IsNullOrEmpty(skip))
+            {
+                skip = "";
+            }
+
+            if (!skip.Equals("Sort"))
+            {
+                Popup_Sort.IsVisible = false;
+            }
+        }
+
         private void ToolbarItemUpvote_Clicked(object sender, EventArgs e)
         {
             Upvote();
@@ -265,7 +362,29 @@ namespace OpenBacon
 
         private void ToolbarItemComments_Clicked(object sender, EventArgs e)
         {
+            ScrollView_Post.ScrollToAsync(0, Frame_Comments.Y, true);
+        }
+
+        private void ToolbarItemNewComment_Clicked(object sender, EventArgs e)
+        {
             // TODO
+        }
+
+        private void ButtonSort_Clicked(object sender, EventArgs e)
+        {
+            ClearPopups("Sort");
+            Popup_Sort.IsVisible = !Popup_Sort.IsVisible;
+        }
+
+        private void ListView_Sort_ItemTapped(object sender, ItemTappedEventArgs e)
+        {
+            LoadSort(((ListView)sender).SelectedItem.ToString());
+            Popup_Sort.IsVisible = false;
+        }
+
+        private void Popup_Sort_OutClick(object sender, EventArgs e)
+        {
+            Popup_Sort.IsVisible = false;
         }
     }
 }
