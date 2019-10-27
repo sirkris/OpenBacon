@@ -76,7 +76,7 @@ namespace OpenBacon
                     : Device.GetNamedSize(NamedSize.Small, typeof(Button)));
             }
 
-            PopulateComments(forceRefresh: true);
+            PopulateComments();
         }
 
         private void LoadSort(bool update = false)
