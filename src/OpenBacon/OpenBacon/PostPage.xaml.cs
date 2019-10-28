@@ -21,6 +21,9 @@ namespace OpenBacon
         public string Sort { get; private set; } = "Top";
 
         private IDictionary<string, int> CommentIndexes { get; set; }
+        private IDictionary<string, Frame> Frames { get; set; }
+        private IList<Comment> CommentsCache { get; set; }
+        private DateTime? CommentsCacheLastUpdated { get; set; }
 
         public PostPage(RedditAPI reddit, Subreddit subreddit, Post post)
         {
@@ -30,11 +33,11 @@ namespace OpenBacon
             Subreddit = subreddit;
             Post = post;
 
-            RefreshToolbar();
+            RefreshToolbar(false);
             RefreshPage();
         }
 
-        private void RefreshToolbar()
+        private void RefreshToolbar(bool refresh = true)
         {
             Post = Post.About();
 
@@ -63,46 +66,65 @@ namespace OpenBacon
                 "Q&A"
             };
 
-            LoadSort(true);
+            LoadSort(refresh);
         }
 
-        private void LoadSort(string sort, bool update = true)
+        private void LoadSort(string sort, bool refresh = true)
         {
-            if (update)
-            {
-                Sort = (!sort.Equals("Q&A", StringComparison.OrdinalIgnoreCase ) ? "qa" : Sort);
-                ButtonSort.Text = sort;
+            Sort = (sort.Equals("Q&A", StringComparison.OrdinalIgnoreCase) ? "qa" : sort);
+            ButtonSort.Text = sort;
 
-                ButtonSort.FontSize = (sort.Equals("Controversial", StringComparison.OrdinalIgnoreCase)
-                    ? Device.GetNamedSize(NamedSize.Micro, typeof(Button))
-                    : Device.GetNamedSize(NamedSize.Small, typeof(Button)));
+            ButtonSort.FontSize = (sort.Equals("Controversial", StringComparison.OrdinalIgnoreCase)
+                ? Device.GetNamedSize(NamedSize.Micro, typeof(Button))
+                : Device.GetNamedSize(NamedSize.Small, typeof(Button)));
+
+            if (refresh)
+            {
+                PopulateComments();
+            }
+        }
+
+        private void LoadSort(bool refresh = false)
+        {
+            LoadSort(Sort, refresh);
+        }
+
+        private IList<Comment> GetComments(Comment parent = null, bool ignoreCache = false, int limit = 5)
+        {
+            if (ignoreCache
+                || !CommentsCacheLastUpdated.HasValue
+                || CommentsCacheLastUpdated.Value.AddSeconds(30) > DateTime.Now)
+            {
+                CommentsCacheLastUpdated = DateTime.Now;
+
+                switch (Sort.ToLower())
+                {
+                    default:
+                        throw new Exception("Unrecognized sort : " + Sort);
+                    case "top":
+                        CommentsCache = (parent == null ? Post.Comments.GetTop(limit: limit) : parent.Comments.GetTop(limit: limit));
+                        break;
+                    case "new":
+                        CommentsCache = (parent == null ? Post.Comments.GetNew(limit: limit) : parent.Comments.GetNew(limit: limit));
+                        break;
+                    case "controversial":
+                        CommentsCache = (parent == null ? Post.Comments.GetControversial(limit: limit) : parent.Comments.GetControversial(limit: limit));
+                        break;
+                    case "old":
+                        CommentsCache = (parent == null ? Post.Comments.GetOld(limit: limit) : parent.Comments.GetOld(limit: limit));
+                        break;
+                    case "qa":
+                        CommentsCache = (parent == null ? Post.Comments.GetQA(limit: limit) : parent.Comments.GetQA(limit: limit));
+                        break;
+                }
             }
 
-            PopulateComments();
-        }
-
-        private void LoadSort(bool update = false)
-        {
-            LoadSort(Sort, update);
-        }
-
-        private List<Comment> GetComments(Comment parent = null)
-        {
-            switch (Sort.ToLower())
+            if (CommentsCache == null)
             {
-                default:
-                    throw new Exception("Unrecognized sort : " + Sort);
-                case "top":
-                    return (parent == null ? Post.Comments.Top : parent.Comments.Top);
-                case "new":
-                    return (parent == null ? Post.Comments.Top : parent.Comments.New);
-                case "controversial":
-                    return (parent == null ? Post.Comments.Top : parent.Comments.Controversial);
-                case "old":
-                    return (parent == null ? Post.Comments.Top : parent.Comments.Old);
-                case "qa":
-                    return (parent == null ? Post.Comments.Top : parent.Comments.QA);
+                CommentsCache = new List<Comment>();
             }
+
+            return CommentsCache;
         }
 
         private void PopulateComments(bool append = false)
@@ -111,6 +133,7 @@ namespace OpenBacon
             {
                 StackLayout_Comments.Children.Clear();
                 ReapplyIndexes();
+                Frames = new Dictionary<string, Frame>();
             }
 
             foreach (Comment comment in GetComments())
@@ -121,24 +144,71 @@ namespace OpenBacon
 
         private void PopulateCommentTree(Comment comment, bool recurse = true, int depth = 0)
         {
-            if (!CommentIndexes.ContainsKey(comment.Fullname))
+            if (comment != null
+                && !string.IsNullOrWhiteSpace(comment.Body))
             {
-                CommentIndexes.Add(comment.Fullname, StackLayout_Comments.Children.Count);
-            }
-
-            // TODO - Display comment and indent as needed.  --Kris
-            
-            // Load any child comments or display link to load more.  --Kris
-            if (recurse)
-            {
-                foreach (Comment reply in GetComments(comment))
+                if (!CommentIndexes.ContainsKey(comment.Fullname))
                 {
-                    PopulateCommentTree(reply, false, (depth + 1));
+                    CommentIndexes.Add(comment.Fullname, StackLayout_Comments.Children.Count);
                 }
-            }
-            else if (!GetComments(comment).Count.Equals(0))
-            {
-                // TODO - Display load more comments link.  --Kris
+
+                // Display comment and indent as needed.  --Kris
+                if (!Frames.ContainsKey(comment.Fullname))
+                {
+                    Grid commentGrid = new Grid
+                    {
+                        Padding = 0,
+                        Margin = 0,
+                        RowDefinitions = new RowDefinitionCollection
+                    {
+                        new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) }
+                    }
+                    };
+
+                    for (int i = depth; i > 0; i--)
+                    {
+                        commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10, GridUnitType.Absolute) });
+                    }
+
+                    commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                    Frames.Add(comment.Fullname,
+                        new Frame
+                        {
+                            BackgroundColor = (!comment.Listing.Likes.HasValue
+                                ? Color.FromHex("#EEE")
+                                : (comment.Listing.Likes.Value
+                                    ? Color.FromHex("#FEE")
+                                    : Color.FromHex("#EEF"))),
+                            HasShadow = true,
+                            Padding = 2,
+                            Content = new Grids.Comment(Reddit, Post, comment).Grid,
+                            HorizontalOptions = LayoutOptions.FillAndExpand,
+                            StyleId = comment.Fullname
+                        });
+
+                    commentGrid.Children.Add(Frames[comment.Fullname], depth, 0);
+
+                    StackLayout_Comments.Children.Add(commentGrid);
+                }
+
+                // Load any child comments or display link to load more.  --Kris
+                // TODO - Scrolling loads more.  --Kris
+                IList<Comment> comments = GetComments(comment, limit: 3);
+                if (comments != null)
+                {
+                    if (recurse)
+                    {
+                        foreach (Comment reply in comments)
+                        {
+                            PopulateCommentTree(reply, false, (depth + 1));
+                        }
+                    }
+                    else if (!comments.Count.Equals(0))
+                    {
+                        // TODO - Display load more comments link.  --Kris
+                    }
+                }
             }
         }
 
@@ -213,6 +283,7 @@ namespace OpenBacon
             Grid metaGrid = new Grid { Padding = 0, RowSpacing = 0, ColumnSpacing = 0, Margin = 0 };
             metaGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
             metaGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+
             metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
 
             metaGrid.Children.Add(
@@ -355,6 +426,12 @@ namespace OpenBacon
                 {
                     WebView_Preview.Source = new UrlWebViewSource { Url = url };
                 }
+            }
+
+            // Comments
+            if (!CommentsCacheLastUpdated.HasValue || CommentsCacheLastUpdated.Value.AddSeconds(30) <= DateTime.Now)
+            {
+                PopulateComments();
             }
         }
 
