@@ -37,9 +37,11 @@ namespace OpenBacon.Grids
 
             Label author = new Label
             {
-                Text = (!string.IsNullOrWhiteSpace(comment.Author) ? comment.Author : "[deleted]"),
-                FontAttributes = (!string.IsNullOrWhiteSpace(comment.Author) ? FontAttributes.Bold : FontAttributes.None),
-                TextColor = Color.FromHex("#369"),
+                Text = (!string.IsNullOrWhiteSpace(comment.Author) 
+                    ? (comment.Author.Equals(post.Author) && !comment.Author.Equals("[deleted]") ? "[S] " : "") + comment.Author 
+                    : "[deleted]"),
+                FontAttributes = (!string.IsNullOrWhiteSpace(comment.Author) && !comment.Author.Equals("[deleted]") ? FontAttributes.Bold : FontAttributes.None),
+                TextColor = (comment.Author.Equals(post.Author) ? Color.Blue : Color.FromHex("#369")),
                 FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
                 VerticalOptions = LayoutOptions.Start,
                 HorizontalOptions = LayoutOptions.Start,

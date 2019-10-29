@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using Xam.Forms.Markdown;
 
 namespace OpenBacon
 {
@@ -24,6 +25,8 @@ namespace OpenBacon
         private IDictionary<string, Frame> Frames { get; set; }
         private IList<Comment> CommentsCache { get; set; }
         private DateTime? CommentsCacheLastUpdated { get; set; }
+
+        private const int MAX_DEPTH = 6;
 
         public PostPage(RedditAPI reddit, Subreddit subreddit, Post post)
         {
@@ -52,7 +55,7 @@ namespace OpenBacon
 
             // TODO - Uncomment once the Reddit.NET UpvoteRatio bug is fixed (Issue #92).  --Kris
             //ToolbarItem_Score.Text += " (" + (Post.Listing.UpvoteRatio * 100).ToString() + "%)";
-            
+
             ToolbarItem_Upvote.IconImageSource = (Post.Listing.Likes.HasValue && Post.Listing.Likes.Value ? "upvoteselected" : "upvote");
             ToolbarItem_Downvote.IconImageSource = (Post.Listing.Likes.HasValue && !Post.Listing.Likes.Value ? "downvoteselected" : "downvote");
 
@@ -89,7 +92,7 @@ namespace OpenBacon
             LoadSort(Sort, refresh);
         }
 
-        private IList<Comment> GetComments(Comment parent = null, bool ignoreCache = false, int limit = 5)
+        private IList<Comment> GetComments(Comment parent = null, bool ignoreCache = false, int limit = 100, int depth = 8)
         {
             if (ignoreCache
                 || !CommentsCacheLastUpdated.HasValue
@@ -102,19 +105,21 @@ namespace OpenBacon
                     default:
                         throw new Exception("Unrecognized sort : " + Sort);
                     case "top":
-                        CommentsCache = (parent == null ? Post.Comments.GetTop(limit: limit) : parent.Comments.GetTop(limit: limit));
+                        CommentsCache = (parent == null ? Post.Comments.GetTop(limit: limit, depth: depth) : parent.Comments.GetTop(limit: limit, depth: depth));
                         break;
                     case "new":
-                        CommentsCache = (parent == null ? Post.Comments.GetNew(limit: limit) : parent.Comments.GetNew(limit: limit));
+                        CommentsCache = (parent == null ? Post.Comments.GetNew(limit: limit, depth: depth) : parent.Comments.GetNew(limit: limit, depth: depth));
                         break;
                     case "controversial":
-                        CommentsCache = (parent == null ? Post.Comments.GetControversial(limit: limit) : parent.Comments.GetControversial(limit: limit));
+                        CommentsCache = (parent == null 
+                            ? Post.Comments.GetControversial(limit: limit, depth: depth) 
+                            : parent.Comments.GetControversial(limit: limit, depth: depth));
                         break;
                     case "old":
-                        CommentsCache = (parent == null ? Post.Comments.GetOld(limit: limit) : parent.Comments.GetOld(limit: limit));
+                        CommentsCache = (parent == null ? Post.Comments.GetOld(limit: limit, depth: depth) : parent.Comments.GetOld(limit: limit, depth: depth));
                         break;
                     case "qa":
-                        CommentsCache = (parent == null ? Post.Comments.GetQA(limit: limit) : parent.Comments.GetQA(limit: limit));
+                        CommentsCache = (parent == null ? Post.Comments.GetQA(limit: limit, depth: depth) : parent.Comments.GetQA(limit: limit, depth: depth));
                         break;
                 }
             }
@@ -142,7 +147,7 @@ namespace OpenBacon
             }
         }
 
-        private void PopulateCommentTree(Comment comment, bool recurse = true, int depth = 0)
+        private void PopulateCommentTree(Comment comment, int depth = 0)
         {
             if (comment != null
                 && !string.IsNullOrWhiteSpace(comment.Body))
@@ -160,9 +165,9 @@ namespace OpenBacon
                         Padding = 0,
                         Margin = 0,
                         RowDefinitions = new RowDefinitionCollection
-                    {
-                        new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) }
-                    }
+                        {
+                            new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) }
+                        }
                     };
 
                     for (int i = depth; i > 0; i--)
@@ -191,24 +196,80 @@ namespace OpenBacon
 
                     StackLayout_Comments.Children.Add(commentGrid);
                 }
-
+                
                 // Load any child comments or display link to load more.  --Kris
-                // TODO - Scrolling loads more.  --Kris
-                IList<Comment> comments = GetComments(comment, limit: 3);
-                if (comments != null)
+                if (comment.Replies != null && !comment.Replies.Count.Equals(0))
                 {
-                    if (recurse)
+                    if (depth <= MAX_DEPTH)
                     {
-                        foreach (Comment reply in comments)
+                        int i = 0;
+                        foreach (Comment reply in comment.Replies)
                         {
-                            PopulateCommentTree(reply, false, (depth + 1));
+                            PopulateCommentTree(reply, (depth + 1));
+
+                            i++;
+                            if (i.Equals(3))
+                            {
+                                break;
+                            }
                         }
                     }
-                    else if (!comments.Count.Equals(0))
+                    else if (!comment.Replies.Count.Equals(0))
                     {
-                        // TODO - Display load more comments link.  --Kris
+                        // Display load more comments link.  --Kris
+                        PopulateMoreLink(comment, (depth + 1));
                     }
                 }
+            }
+        }
+
+        // TODO - Add tap gesture.  --Kris
+        private void PopulateMoreLink(Comment parent, int depth = 0)
+        {
+            string key = parent.Fullname + ".More";
+            if (!Frames.ContainsKey(key))
+            {
+                Grid commentGrid = new Grid
+                {
+                    Padding = 0,
+                    Margin = 0,
+                    RowDefinitions = new RowDefinitionCollection
+                        {
+                            new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) }
+                        }
+                };
+
+                for (int i = depth; i > 0; i--)
+                {
+                    commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10, GridUnitType.Absolute) });
+                }
+
+                commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                Frames.Add(key,
+                    new Frame
+                    {
+                        BackgroundColor = (!parent.Listing.Likes.HasValue
+                            ? Color.FromHex("#EEE")
+                            : (parent.Listing.Likes.Value
+                                ? Color.FromHex("#FEE")
+                                : Color.FromHex("#EEF"))),
+                        HasShadow = true,
+                        Padding = 2,
+                        Content = new Label
+                        {
+                            Text = "Load More Comments...", 
+                            FontAttributes = FontAttributes.Bold, 
+                            TextColor = Color.Blue, 
+                            FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label))
+                        },
+                        HorizontalOptions = LayoutOptions.FillAndExpand,
+                        StyleId = key
+                    });
+
+                commentGrid.Children.Add(Frames[key], depth, 0);
+
+                StackLayout_Comments.Children.Add(commentGrid);
             }
         }
 
@@ -313,6 +374,8 @@ namespace OpenBacon
                 authorGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
                 authorGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
                 authorGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+                authorGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+                authorGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
 
                 authorGrid.Children.Add(
                     new Label
@@ -334,6 +397,16 @@ namespace OpenBacon
                         VerticalOptions = LayoutOptions.Start,
                         Margin = 0
                     }, 1, 0);
+                authorGrid.Children.Add(
+                    new Label
+                    {
+                        Text = "",
+                        BackgroundColor = Color.White,
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                        VerticalOptions = LayoutOptions.Start,
+                        HorizontalOptions = LayoutOptions.FillAndExpand,
+                        Margin = 0
+                    }, 2, 0);
 
                 metaGrid.Children.Add(authorGrid, 0, 2);
             }
@@ -350,7 +423,7 @@ namespace OpenBacon
                     }, 0, 2);
             }
 
-            if (!string.IsNullOrWhiteSpace(Post.Listing.Domain) 
+            if (!string.IsNullOrWhiteSpace(Post.Listing.Domain)
                 || !Post.Listing.IsSelf)
             {
                 LinkPost linkPost = null;
@@ -358,15 +431,15 @@ namespace OpenBacon
                 {
                     linkPost = new LinkPost(Reddit.Models, Post.Listing);
                 }
-                
+
                 metaGrid.Children.Add(
                     new Label
                     {
-                        Text = (!Post.Listing.IsSelf 
+                        Text = (!Post.Listing.IsSelf
                                 ? "URL: " + (linkPost.URL.Length >= 60 ? linkPost.URL.Substring(0, 57) + "..." : linkPost.URL) + " "
-                                : "") 
-                            + (!string.IsNullOrWhiteSpace(Post.Listing.Domain) 
-                                ? "(" + Post.Listing.Domain + ")" 
+                                : "")
+                            + (!string.IsNullOrWhiteSpace(Post.Listing.Domain)
+                                ? "(" + Post.Listing.Domain + ")"
                                 : ""),
                         TextColor = Color.FromHex("#888"),
                         FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
@@ -386,6 +459,13 @@ namespace OpenBacon
                         + (new SelfPost(Reddit.Models, Post.Listing)).SelfTextHTML
                         + "</div>"
                 };
+                StackLayout_Preview.Children.Clear();
+                StackLayout_Preview.Children.Add(
+                    new MarkdownView
+                    {
+                        Markdown = (new SelfPost(Reddit.Models, Post.Listing)).SelfText
+                    }
+                );
             }
             else
             {
