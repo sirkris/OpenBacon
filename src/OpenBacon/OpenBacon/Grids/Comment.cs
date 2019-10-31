@@ -9,9 +9,11 @@ namespace OpenBacon.Grids
 {
     public class Comment
     {
+        public bool Collapsed { get; set; } = false;
         public Grid Grid { get; private set; }
 
-        public Comment(RedditAPI reddit, Controllers.Post post, Controllers.Comment comment, bool loadUser = false, bool showUserFlair = true)
+        public Comment(RedditAPI reddit, Controllers.Post post, Controllers.Comment comment, ref Label collapseLabel, ref Label statsLabel,
+            bool loadUser = false, bool showUserFlair = true)
         {
             Grid = new Grid { Padding = 0 };
 
@@ -34,6 +36,24 @@ namespace OpenBacon.Grids
 
             metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
             metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+            metaGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+
+            if (comment.Replies != null && !comment.Replies.Count.Equals(0))
+            {
+                collapseLabel = new Label
+                {
+                    Text = "[ " + (!Collapsed ? "-" : "+") + " ]",
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.Black,
+                    FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                    VerticalOptions = LayoutOptions.Start,
+                    HorizontalOptions = LayoutOptions.Start,
+                    Margin = 0, 
+                    StyleId = comment.Fullname
+                };
+
+                metaGrid.Children.Add(collapseLabel, 0, 0);
+            }
 
             Label author = new Label
             {
@@ -78,23 +98,23 @@ namespace OpenBacon.Grids
                         Margin = 0
                     }, 1, 0);
 
-                metaGrid.Children.Add(authorGrid, 0, 0);
+                metaGrid.Children.Add(authorGrid, 1, 0);
             }
             else
             {
-                metaGrid.Children.Add(author, 0, 0);
+                metaGrid.Children.Add(author, 1, 0);
             }
 
-            metaGrid.Children.Add(
-                new Label
-                {
-                    Text = comment.Score.ToString() + " points " + Common.GetDateTimeSpan(comment.Created) + " ago",
-                    TextColor = Color.FromHex("#888"),
-                    FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
-                    VerticalOptions = LayoutOptions.Start,
-                    HorizontalOptions = LayoutOptions.End,
-                    Margin = 0
-                }, 1, 0);
+            statsLabel = new Label
+            {
+                Text = Common.UpdateCommentStats(comment),
+                TextColor = Color.FromHex("#888"),
+                FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label)),
+                VerticalOptions = LayoutOptions.Start,
+                HorizontalOptions = LayoutOptions.End,
+                Margin = 0
+            };
+            metaGrid.Children.Add(statsLabel, 2, 0);
 
             Grid.Children.Add(metaGrid, 0, 0);
 

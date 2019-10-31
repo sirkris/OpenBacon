@@ -23,8 +23,23 @@ namespace OpenBacon
 
         private IDictionary<string, int> CommentIndexes { get; set; }
         private IDictionary<string, Frame> Frames { get; set; }
+        private IDictionary<string, Grid> CommentGrids { get; set; }
+        private IDictionary<string, TapGestureRecognizer> CommentTaps { get; set; }
+        private IDictionary<string, TapGestureRecognizer> CommentCollapseTaps { get; set; }
+        private IDictionary<string, SwipeGestureRecognizer> CommentLeftSwipes { get; set; }
+        private IDictionary<string, SwipeGestureRecognizer> CommentRightSwipes { get; set; }
+        private IDictionary<string, Label> CommentStatsLabels { get; set; }
+        private IDictionary<string, int> CommentScores { get; set; }
+        private IDictionary<string, bool> IsCollapsed { get; set; }
         private IList<Comment> CommentsCache { get; set; }
         private DateTime? CommentsCacheLastUpdated { get; set; }
+
+        private IDictionary<string, Color> CommentBackgroundColors { get; set; } = new Dictionary<string, Color>
+        {
+            { "neutral", Color.FromHex("#EEE") },
+            { "up", Color.FromHex("#FEE") },
+            { "down", Color.FromHex("#EEF") }
+        };
 
         private const int MAX_DEPTH = 6;
 
@@ -111,8 +126,8 @@ namespace OpenBacon
                         CommentsCache = (parent == null ? Post.Comments.GetNew(limit: limit, depth: depth) : parent.Comments.GetNew(limit: limit, depth: depth));
                         break;
                     case "controversial":
-                        CommentsCache = (parent == null 
-                            ? Post.Comments.GetControversial(limit: limit, depth: depth) 
+                        CommentsCache = (parent == null
+                            ? Post.Comments.GetControversial(limit: limit, depth: depth)
                             : parent.Comments.GetControversial(limit: limit, depth: depth));
                         break;
                     case "old":
@@ -139,6 +154,14 @@ namespace OpenBacon
                 StackLayout_Comments.Children.Clear();
                 ReapplyIndexes();
                 Frames = new Dictionary<string, Frame>();
+                CommentGrids = new Dictionary<string, Grid>();
+                CommentStatsLabels = new Dictionary<string, Label>();
+                CommentScores = new Dictionary<string, int>();
+                CommentTaps = new Dictionary<string, TapGestureRecognizer>();
+                CommentCollapseTaps = new Dictionary<string, TapGestureRecognizer>();
+                CommentLeftSwipes = new Dictionary<string, SwipeGestureRecognizer>();
+                CommentRightSwipes = new Dictionary<string, SwipeGestureRecognizer>();
+                IsCollapsed = new Dictionary<string, bool>();
             }
 
             foreach (Comment comment in GetComments())
@@ -156,6 +179,12 @@ namespace OpenBacon
                 {
                     CommentIndexes.Add(comment.Fullname, StackLayout_Comments.Children.Count);
                 }
+
+                if (CommentScores.ContainsKey(comment.Fullname))
+                {
+                    CommentScores.Remove(comment.Fullname);
+                }
+                CommentScores.Add(comment.Fullname, comment.Score);
 
                 // Display comment and indent as needed.  --Kris
                 if (!Frames.ContainsKey(comment.Fullname))
@@ -177,6 +206,8 @@ namespace OpenBacon
 
                     commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+                    Label collapseLabel = null;
+                    Label commentStatsLabel = null;
                     Frames.Add(comment.Fullname,
                         new Frame
                         {
@@ -187,16 +218,66 @@ namespace OpenBacon
                                     : Color.FromHex("#EEF"))),
                             HasShadow = true,
                             Padding = 2,
-                            Content = new Grids.Comment(Reddit, Post, comment).Grid,
+                            Content = new Grids.Comment(Reddit, Post, comment, ref collapseLabel, ref commentStatsLabel).Grid,
                             HorizontalOptions = LayoutOptions.FillAndExpand,
                             StyleId = comment.Fullname
                         });
 
+                    if (!CommentStatsLabels.ContainsKey(comment.Fullname))
+                    {
+                        CommentStatsLabels.Add(comment.Fullname, commentStatsLabel);
+                    }
+
+                    if (!CommentTaps.ContainsKey(comment.Fullname))
+                    {
+                        CommentTaps.Add(comment.Fullname, new TapGestureRecognizer());
+                        CommentTaps[comment.Fullname].Tapped += Comment_Tapped;
+                    }
+
+                    if (!CommentCollapseTaps.ContainsKey(comment.Fullname) 
+                        && collapseLabel != null)
+                    {
+                        CommentCollapseTaps.Add(comment.Fullname, new TapGestureRecognizer());
+                        CommentCollapseTaps[comment.Fullname].Tapped += CommentCollapse_Tapped;
+
+                        collapseLabel.GestureRecognizers.Add(CommentCollapseTaps[comment.Fullname]);
+                    }
+
+                    if (!CommentLeftSwipes.ContainsKey(comment.Fullname))
+                    {
+                        CommentLeftSwipes.Add(comment.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Left });
+                        CommentLeftSwipes[comment.Fullname].Swiped += Comment_LeftSwiped;
+                    }
+
+                    if (!CommentRightSwipes.ContainsKey(comment.Fullname))
+                    {
+                        CommentRightSwipes.Add(comment.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Right });
+                        CommentRightSwipes[comment.Fullname].Swiped += Comment_RightSwiped;
+                    }
+
+                    Frames[comment.Fullname].GestureRecognizers.Add(CommentTaps[comment.Fullname]);
+                    Frames[comment.Fullname].GestureRecognizers.Add(CommentLeftSwipes[comment.Fullname]);
+                    Frames[comment.Fullname].GestureRecognizers.Add(CommentRightSwipes[comment.Fullname]);
+
                     commentGrid.Children.Add(Frames[comment.Fullname], depth, 0);
 
-                    StackLayout_Comments.Children.Add(commentGrid);
+                    if (CommentGrids.ContainsKey(comment.Fullname))
+                    {
+                        CommentGrids.Remove(comment.Fullname);
+                    }
+                    CommentGrids.Add(comment.Fullname, commentGrid);
+
+                    if (!IsCollapsed.ContainsKey(comment.Fullname))
+                    {
+                        IsCollapsed.Add(comment.Fullname, false);
+                    }
+
+                    if (!IsCollapsed[comment.Fullname])
+                    {
+                        StackLayout_Comments.Children.Add(commentGrid);
+                    }
                 }
-                
+
                 // Load any child comments or display link to load more.  --Kris
                 if (comment.Replies != null && !comment.Replies.Count.Equals(0))
                 {
@@ -221,6 +302,16 @@ namespace OpenBacon
                     }
                 }
             }
+        }
+
+        private void CollapseTree(string fullname)
+        {
+            // TODO
+        }
+
+        private void UncollapseTree(string fullname)
+        {
+            // TODO
         }
 
         // TODO - Add tap gesture.  --Kris
@@ -250,17 +341,17 @@ namespace OpenBacon
                     new Frame
                     {
                         BackgroundColor = (!parent.Listing.Likes.HasValue
-                            ? Color.FromHex("#EEE")
+                            ? CommentBackgroundColors["neutral"]
                             : (parent.Listing.Likes.Value
-                                ? Color.FromHex("#FEE")
-                                : Color.FromHex("#EEF"))),
+                                ? CommentBackgroundColors["up"]
+                                : CommentBackgroundColors["down"])),
                         HasShadow = true,
                         Padding = 2,
                         Content = new Label
                         {
-                            Text = "Load More Comments...", 
-                            FontAttributes = FontAttributes.Bold, 
-                            TextColor = Color.Blue, 
+                            Text = "Load More Comments...",
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = Color.Blue,
                             FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label))
                         },
                         HorizontalOptions = LayoutOptions.FillAndExpand,
@@ -528,6 +619,23 @@ namespace OpenBacon
             }
         }
 
+        private void SetCommentBackgroundColor(Comment comment)
+        {
+            Frames[comment.Fullname].BackgroundColor = (!comment.Listing.Likes.HasValue
+                ? CommentBackgroundColors["neutral"]
+                : (comment.Listing.Likes.Value
+                    ? CommentBackgroundColors["up"]
+                    : CommentBackgroundColors["down"]));
+        }
+
+        private void UpdateComment(Comment comment, int? scoreModifier = null)
+        {
+            SetCommentBackgroundColor(comment);
+            CommentStatsLabels[comment.Fullname].Text = (scoreModifier.HasValue
+                ? Common.UpdateCommentStats(comment, (CommentScores[comment.Fullname] + scoreModifier.Value))
+                : Common.UpdateCommentStats(comment));
+        }
+
         private void ToolbarItemUpvote_Clicked(object sender, EventArgs e)
         {
             Upvote();
@@ -556,6 +664,7 @@ namespace OpenBacon
 
         private void ListView_Sort_ItemTapped(object sender, ItemTappedEventArgs e)
         {
+            CommentsCacheLastUpdated = null;
             LoadSort(((ListView)sender).SelectedItem.ToString());
             Popup_Sort.IsVisible = false;
         }
@@ -563,6 +672,46 @@ namespace OpenBacon
         private void Popup_Sort_OutClick(object sender, EventArgs e)
         {
             Popup_Sort.IsVisible = false;
+        }
+
+        private void Comment_Tapped(object sender, EventArgs e)
+        {
+            // TODO
+        }
+
+        private void CommentCollapse_Tapped(object sender, EventArgs e)
+        {
+            string fullname = ((Label)sender).StyleId;
+            if (IsCollapsed.ContainsKey(fullname)
+                && IsCollapsed[fullname])
+            {
+                UncollapseTree(fullname);
+            }
+            else
+            {
+                CollapseTree(fullname);
+            }
+        }
+
+        private void Comment_LeftSwiped(object sender, SwipedEventArgs e)
+        {
+            Comment comment = Reddit.Comment(((Frame)sender).StyleId).About();
+            int scoreMod = (Common.Downvote(comment) ? -1 : 0);
+
+            UpdateComment(comment.About(), scoreMod);
+        }
+
+        private void Comment_RightSwiped(object sender, SwipedEventArgs e)
+        {
+            Comment comment = Reddit.Comment(((Frame)sender).StyleId).About();
+            int scoreMod = (Common.Upvote(comment) ? 1 : 0);
+
+            UpdateComment(comment.About(), scoreMod);
+        }
+
+        private void ScrollView_Post_Scrolled(object sender, ScrolledEventArgs e)
+        {
+            // TODO - Scrolling to bottom loads more top-level comments (cache on separate thread maybe?).  --Kris
         }
     }
 }

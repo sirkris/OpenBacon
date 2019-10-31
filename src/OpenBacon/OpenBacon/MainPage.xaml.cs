@@ -596,34 +596,14 @@ namespace OpenBacon
 
         private void FrameSwiped_Right(object sender, EventArgs e)
         {
-            Upvote(Subreddit.Post(((Frame)sender).StyleId).About());
+            Common.Upvote(Subreddit.Post(((Frame)sender).StyleId).About());
+            UpdateVotingGrid(Subreddit.Post(((Frame)sender).StyleId).About());
         }
 
         private void ImageUpvote_Clicked(object sender, EventArgs e)
         {
-            Upvote(Subreddit.Post(((Image)sender).StyleId).About());
-        }
-
-        private void Upvote(Post post)
-        {
-            if (!post.Listing.Likes.HasValue || !post.Listing.Likes.Value)
-            {
-                try
-                {
-                    post.Upvote();
-                }
-                catch (Exception) { }
-            }
-            else
-            {
-                try
-                {
-                    post.Unvote();
-                }
-                catch (Exception) { }
-            }
-
-            UpdateVotingGrid(post.About());
+            Common.Upvote(Subreddit.Post(((Image)sender).StyleId).About());
+            UpdateVotingGrid(Subreddit.Post(((Image)sender).StyleId).About());
         }
 
         private void Frame_Clicked(object sender, EventArgs e)
@@ -633,34 +613,14 @@ namespace OpenBacon
 
         private void FrameSwiped_Left(object sender, EventArgs e)
         {
-            Downvote(Subreddit.Post(((Frame)sender).StyleId).About());
+            Common.Downvote(Subreddit.Post(((Frame)sender).StyleId).About());
+            UpdateVotingGrid(Subreddit.Post(((Frame)sender).StyleId).About());
         }
 
         private void ImageDownvote_Clicked(object sender, EventArgs e)
         {
-            Downvote(Subreddit.Post(((Image)sender).StyleId).About());
-        }
-
-        private void Downvote(Post post)
-        {
-            if (!post.Listing.Likes.HasValue || post.Listing.Likes.Value)
-            {
-                try
-                {
-                    post.Downvote();
-                }
-                catch (Exception) { }
-            }
-            else
-            {
-                try
-                {
-                    post.Unvote();
-                }
-                catch (Exception) { }
-            }
-
-            UpdateVotingGrid(post.About());
+            Common.Downvote(Subreddit.Post(((Image)sender).StyleId).About());
+            UpdateVotingGrid(Subreddit.Post(((Image)sender).StyleId).About());
         }
 
         private void UpdateVotingGrid(Post post)
