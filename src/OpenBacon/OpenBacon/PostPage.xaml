@@ -24,7 +24,7 @@
     </ContentPage.ToolbarItems>
     <ContentPage.Content>
         <AbsoluteLayout Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
-            <ScrollView x:FieldModifier="public" x:Name="ScrollView_Post" Orientation="Vertical" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
+            <ScrollView x:FieldModifier="public" x:Name="ScrollView_Post" Scrolled="ScrollView_Post_Scrolled" Orientation="Vertical" AbsoluteLayout.LayoutBounds="0, 0, 1, 1" AbsoluteLayout.LayoutFlags="All">
                 <StackLayout>
                     <Frame HasShadow="True" Padding="2">
                         <Grid ColumnSpacing="2">

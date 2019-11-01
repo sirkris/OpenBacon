@@ -2,10 +2,6 @@
 using Reddit.Controllers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using Xam.Forms.Markdown;
@@ -21,16 +17,7 @@ namespace OpenBacon
 
         public string Sort { get; private set; } = "Top";
 
-        private IDictionary<string, int> CommentIndexes { get; set; }
-        private IDictionary<string, Frame> Frames { get; set; }
-        private IDictionary<string, Grid> CommentGrids { get; set; }
-        private IDictionary<string, TapGestureRecognizer> CommentTaps { get; set; }
-        private IDictionary<string, TapGestureRecognizer> CommentCollapseTaps { get; set; }
-        private IDictionary<string, SwipeGestureRecognizer> CommentLeftSwipes { get; set; }
-        private IDictionary<string, SwipeGestureRecognizer> CommentRightSwipes { get; set; }
-        private IDictionary<string, Label> CommentStatsLabels { get; set; }
-        private IDictionary<string, int> CommentScores { get; set; }
-        private IDictionary<string, bool> IsCollapsed { get; set; }
+        private IDictionary<string, CommentData> CommentData { get; set; }
         private IList<Comment> CommentsCache { get; set; }
         private DateTime? CommentsCacheLastUpdated { get; set; }
 
@@ -153,15 +140,7 @@ namespace OpenBacon
             {
                 StackLayout_Comments.Children.Clear();
                 ReapplyIndexes();
-                Frames = new Dictionary<string, Frame>();
-                CommentGrids = new Dictionary<string, Grid>();
-                CommentStatsLabels = new Dictionary<string, Label>();
-                CommentScores = new Dictionary<string, int>();
-                CommentTaps = new Dictionary<string, TapGestureRecognizer>();
-                CommentCollapseTaps = new Dictionary<string, TapGestureRecognizer>();
-                CommentLeftSwipes = new Dictionary<string, SwipeGestureRecognizer>();
-                CommentRightSwipes = new Dictionary<string, SwipeGestureRecognizer>();
-                IsCollapsed = new Dictionary<string, bool>();
+                CommentData = new Dictionary<string, CommentData>();
             }
 
             foreach (Comment comment in GetComments())
@@ -175,19 +154,16 @@ namespace OpenBacon
             if (comment != null
                 && !string.IsNullOrWhiteSpace(comment.Body))
             {
-                if (!CommentIndexes.ContainsKey(comment.Fullname))
+                if (!CommentData.ContainsKey(comment.Fullname))
                 {
-                    CommentIndexes.Add(comment.Fullname, StackLayout_Comments.Children.Count);
+                    CommentData.Add(comment.Fullname, new CommentData());
                 }
 
-                if (CommentScores.ContainsKey(comment.Fullname))
-                {
-                    CommentScores.Remove(comment.Fullname);
-                }
-                CommentScores.Add(comment.Fullname, comment.Score);
+                CommentData[comment.Fullname].Index = StackLayout_Comments.Children.Count;
+                CommentData[comment.Fullname].Score = comment.Score;
 
                 // Display comment and indent as needed.  --Kris
-                if (!Frames.ContainsKey(comment.Fullname))
+                if (!CommentData.ContainsKey(comment.Fullname))
                 {
                     Grid commentGrid = new Grid
                     {
@@ -208,71 +184,47 @@ namespace OpenBacon
 
                     Label collapseLabel = null;
                     Label commentStatsLabel = null;
-                    Frames.Add(comment.Fullname,
-                        new Frame
-                        {
-                            BackgroundColor = (!comment.Listing.Likes.HasValue
-                                ? Color.FromHex("#EEE")
-                                : (comment.Listing.Likes.Value
-                                    ? Color.FromHex("#FEE")
-                                    : Color.FromHex("#EEF"))),
-                            HasShadow = true,
-                            Padding = 2,
-                            Content = new Grids.Comment(Reddit, Post, comment, ref collapseLabel, ref commentStatsLabel).Grid,
-                            HorizontalOptions = LayoutOptions.FillAndExpand,
-                            StyleId = comment.Fullname
-                        });
-
-                    if (!CommentStatsLabels.ContainsKey(comment.Fullname))
+                    CommentData[comment.Fullname].Frame = new Frame
                     {
-                        CommentStatsLabels.Add(comment.Fullname, commentStatsLabel);
+                        BackgroundColor = (!comment.Listing.Likes.HasValue
+                            ? Color.FromHex("#EEE")
+                            : (comment.Listing.Likes.Value
+                                ? Color.FromHex("#FEE")
+                                : Color.FromHex("#EEF"))),
+                        HasShadow = true,
+                        Padding = 2,
+                        Content = new Grids.Comment(Reddit, Post, comment, ref collapseLabel, ref commentStatsLabel).Grid,
+                        HorizontalOptions = LayoutOptions.FillAndExpand,
+                        StyleId = comment.Fullname
+                    };
+
+                    CommentData[comment.Fullname].StatsLabel = commentStatsLabel;
+                    CommentData[comment.Fullname].TapComment = new TapGestureRecognizer();
+                    CommentData[comment.Fullname].TapComment.Tapped += Comment_Tapped;
+
+                    if (collapseLabel != null)
+                    {
+                        CommentData[comment.Fullname].TapCollapse = new TapGestureRecognizer();
+                        CommentData[comment.Fullname].TapCollapse.Tapped += CommentCollapse_Tapped;
+
+                        collapseLabel.GestureRecognizers.Add(CommentData[comment.Fullname].TapCollapse);
                     }
 
-                    if (!CommentTaps.ContainsKey(comment.Fullname))
-                    {
-                        CommentTaps.Add(comment.Fullname, new TapGestureRecognizer());
-                        CommentTaps[comment.Fullname].Tapped += Comment_Tapped;
-                    }
+                    CommentData[comment.Fullname].SwipeLeft = new SwipeGestureRecognizer { Direction = SwipeDirection.Left };
+                    CommentData[comment.Fullname].SwipeLeft.Swiped += Comment_LeftSwiped;
+                    CommentData[comment.Fullname].SwipeRight = new SwipeGestureRecognizer { Direction = SwipeDirection.Right };
+                    CommentData[comment.Fullname].SwipeRight.Swiped += Comment_RightSwiped;
 
-                    if (!CommentCollapseTaps.ContainsKey(comment.Fullname) 
-                        && collapseLabel != null)
-                    {
-                        CommentCollapseTaps.Add(comment.Fullname, new TapGestureRecognizer());
-                        CommentCollapseTaps[comment.Fullname].Tapped += CommentCollapse_Tapped;
+                    CommentData[comment.Fullname].Frame.GestureRecognizers.Add(CommentData[comment.Fullname].TapComment);
+                    CommentData[comment.Fullname].Frame.GestureRecognizers.Add(CommentData[comment.Fullname].SwipeLeft);
+                    CommentData[comment.Fullname].Frame.GestureRecognizers.Add(CommentData[comment.Fullname].SwipeRight);
 
-                        collapseLabel.GestureRecognizers.Add(CommentCollapseTaps[comment.Fullname]);
-                    }
+                    commentGrid.Children.Add(CommentData[comment.Fullname].Frame, depth, 0);
 
-                    if (!CommentLeftSwipes.ContainsKey(comment.Fullname))
-                    {
-                        CommentLeftSwipes.Add(comment.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Left });
-                        CommentLeftSwipes[comment.Fullname].Swiped += Comment_LeftSwiped;
-                    }
+                    CommentData[comment.Fullname].Grid = commentGrid;
+                    CommentData[comment.Fullname].IsCollapsed = false; // TODO - Have configurable setting for default behavior.  --Kris
 
-                    if (!CommentRightSwipes.ContainsKey(comment.Fullname))
-                    {
-                        CommentRightSwipes.Add(comment.Fullname, new SwipeGestureRecognizer { Direction = SwipeDirection.Right });
-                        CommentRightSwipes[comment.Fullname].Swiped += Comment_RightSwiped;
-                    }
-
-                    Frames[comment.Fullname].GestureRecognizers.Add(CommentTaps[comment.Fullname]);
-                    Frames[comment.Fullname].GestureRecognizers.Add(CommentLeftSwipes[comment.Fullname]);
-                    Frames[comment.Fullname].GestureRecognizers.Add(CommentRightSwipes[comment.Fullname]);
-
-                    commentGrid.Children.Add(Frames[comment.Fullname], depth, 0);
-
-                    if (CommentGrids.ContainsKey(comment.Fullname))
-                    {
-                        CommentGrids.Remove(comment.Fullname);
-                    }
-                    CommentGrids.Add(comment.Fullname, commentGrid);
-
-                    if (!IsCollapsed.ContainsKey(comment.Fullname))
-                    {
-                        IsCollapsed.Add(comment.Fullname, false);
-                    }
-
-                    if (!IsCollapsed[comment.Fullname])
+                    if (!CommentData[comment.Fullname].IsCollapsed)
                     {
                         StackLayout_Comments.Children.Add(commentGrid);
                     }
@@ -318,7 +270,7 @@ namespace OpenBacon
         private void PopulateMoreLink(Comment parent, int depth = 0)
         {
             string key = parent.Fullname + ".More";
-            if (!Frames.ContainsKey(key))
+            if (!CommentData.ContainsKey(key))
             {
                 Grid commentGrid = new Grid
                 {
@@ -337,28 +289,30 @@ namespace OpenBacon
 
                 commentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-                Frames.Add(key,
-                    new Frame
-                    {
-                        BackgroundColor = (!parent.Listing.Likes.HasValue
+                CommentData.Add(key, new CommentData());
+                CommentData[key].Frame = new Frame
+                {
+                    BackgroundColor = (!parent.Listing.Likes.HasValue
                             ? CommentBackgroundColors["neutral"]
                             : (parent.Listing.Likes.Value
                                 ? CommentBackgroundColors["up"]
                                 : CommentBackgroundColors["down"])),
-                        HasShadow = true,
-                        Padding = 2,
-                        Content = new Label
-                        {
-                            Text = "Load More Comments...",
-                            FontAttributes = FontAttributes.Bold,
-                            TextColor = Color.Blue,
-                            FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label))
-                        },
-                        HorizontalOptions = LayoutOptions.FillAndExpand,
-                        StyleId = key
-                    });
+                    HasShadow = true,
+                    Padding = 2,
+                    Content = new Label
+                    {
+                        Text = "Load More Comments...",
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Color.Blue,
+                        FontSize = Device.GetNamedSize(NamedSize.Micro, typeof(Label))
+                    },
+                    HorizontalOptions = LayoutOptions.FillAndExpand,
+                    StyleId = key
+                };
 
-                commentGrid.Children.Add(Frames[key], depth, 0);
+                commentGrid.Children.Add(CommentData[key].Frame, depth, 0);
+                
+                CommentData[key].Grid = commentGrid;
 
                 StackLayout_Comments.Children.Add(commentGrid);
             }
@@ -367,12 +321,11 @@ namespace OpenBacon
         // Call this whenever comments are inserted into the StackLayout so that the indexes remain accurate.  --Kris
         private void ReapplyIndexes()
         {
-            CommentIndexes = new Dictionary<string, int>();
             for (int i = 0; i < StackLayout_Comments.Children.Count; i++)
             {
-                if (!CommentIndexes.ContainsKey(StackLayout_Comments.Children[i].StyleId))
+                if (CommentData.ContainsKey(StackLayout_Comments.Children[i].StyleId))
                 {
-                    CommentIndexes.Add(StackLayout_Comments.Children[i].StyleId, i);
+                    CommentData[StackLayout_Comments.Children[i].StyleId].Index = i;
                 }
             }
         }
@@ -621,7 +574,7 @@ namespace OpenBacon
 
         private void SetCommentBackgroundColor(Comment comment)
         {
-            Frames[comment.Fullname].BackgroundColor = (!comment.Listing.Likes.HasValue
+            CommentData[comment.Fullname].Frame.BackgroundColor = (!comment.Listing.Likes.HasValue
                 ? CommentBackgroundColors["neutral"]
                 : (comment.Listing.Likes.Value
                     ? CommentBackgroundColors["up"]
@@ -631,8 +584,8 @@ namespace OpenBacon
         private void UpdateComment(Comment comment, int? scoreModifier = null)
         {
             SetCommentBackgroundColor(comment);
-            CommentStatsLabels[comment.Fullname].Text = (scoreModifier.HasValue
-                ? Common.UpdateCommentStats(comment, (CommentScores[comment.Fullname] + scoreModifier.Value))
+            CommentData[comment.Fullname].StatsLabel.Text = (scoreModifier.HasValue
+                ? Common.UpdateCommentStats(comment, (CommentData[comment.Fullname].Score + scoreModifier.Value))
                 : Common.UpdateCommentStats(comment));
         }
 
@@ -682,14 +635,16 @@ namespace OpenBacon
         private void CommentCollapse_Tapped(object sender, EventArgs e)
         {
             string fullname = ((Label)sender).StyleId;
-            if (IsCollapsed.ContainsKey(fullname)
-                && IsCollapsed[fullname])
+            if (CommentData.ContainsKey(fullname))
             {
-                UncollapseTree(fullname);
-            }
-            else
-            {
-                CollapseTree(fullname);
+                if (CommentData[fullname].IsCollapsed)
+                {
+                    UncollapseTree(fullname);
+                }
+                else
+                {
+                    CollapseTree(fullname);
+                }
             }
         }
 
@@ -705,13 +660,13 @@ namespace OpenBacon
         {
             Comment comment = Reddit.Comment(((Frame)sender).StyleId).About();
             int scoreMod = (Common.Upvote(comment) ? 1 : 0);
-
+            
             UpdateComment(comment.About(), scoreMod);
         }
 
         private void ScrollView_Post_Scrolled(object sender, ScrolledEventArgs e)
         {
-            // TODO - Scrolling to bottom loads more top-level comments (cache on separate thread maybe?).  --Kris
+            // TODO - Scrolling to bottom loads more comments (cache on separate thread maybe?).  --Kris
         }
     }
 }
